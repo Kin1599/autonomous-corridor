@@ -1,0 +1,16 @@
+{
+  "state_estimates": {
+    "OPEN": 0.998441,
+    "PARTIAL_BLOCK": 0.992218,
+    "CONGESTED": 0.847545
+  },
+  "source_assessments": {
+    "OK": 0.999291,
+    "DEGRADED": 0.985507,
+    "FAILED": 0.996604
+  },
+  "vehicle_assessments": {
+    "COMPLIANT": 0.999651,
+    "VIOLATED": 0.918087
+  }
+}

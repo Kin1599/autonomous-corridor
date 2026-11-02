@@ -1,0 +1,23 @@
+name: Python checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check Python syntax
+        run: python -m compileall -q solution tools tests
+      - name: Run tests (dataset tests skip without organizer data)
+        run: python -m unittest discover -s tests -v
+      - name: Check controller entry point
+        run: python -m solution --help

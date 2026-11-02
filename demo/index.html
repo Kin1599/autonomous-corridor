@@ -1,0 +1,1216 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#071624">
+<title>Разбор решений контроллера</title>
+<meta name="description" content="Интерактивный разбор решений потокового контроллера по всем шагам сценария.">
+<style>
+:root{
+  color-scheme:dark;
+  --page:#071624;--panel:#0f2234;--panel-2:#13293d;--map:#0d1e2d;--inset:#0a1a28;
+  --hair:rgba(255,255,255,.09);--hair-2:rgba(255,255,255,.16);
+  --text:#eef6fb;--text-2:#b7c8d4;--muted:#8ba2b2;--accent:#5de2e7;
+  --road-base:#18303f;--road-open:#4d6477;--unknown:#71879a;
+  --warn:#fab219;--serious:#ec835a;--crit:#d03b3b;--good:#0ca30c;
+  --go:#9fb0bf;--slow:#fab219;--route:#3987e5;--hold:#d03b3b;--stop:#199e70;
+  --rain:#3987e5;
+}
+*{box-sizing:border-box}
+html{background:var(--page)}
+body{margin:0;background:var(--page);color:var(--text);font:15px/1.45 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+button,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{max-width:1760px;margin:0 auto;padding:20px 26px 32px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:14px}
+.eyebrow{font-size:12px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+.top h1{margin:4px 0 2px;font-size:clamp(26px,2.4vw,38px);letter-spacing:-.03em;line-height:1.1}
+.top p{margin:0;color:var(--text-2)}
+.badges{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.badge{border:1px solid var(--hair-2);border-radius:999px;padding:6px 12px;font-size:12.5px;color:var(--text-2);background:var(--panel);white-space:nowrap}
+
+.story{display:grid;grid-template-columns:62px minmax(0,1fr) 236px;gap:18px;align-items:start;padding:14px 18px;border:1px solid var(--hair);border-left:4px solid var(--accent);border-radius:12px;background:var(--panel)}
+.story .chap{font-size:12px;color:var(--muted);text-align:center;line-height:1.2}
+.story .chap b{display:block;font-size:26px;color:var(--text);font-weight:750}
+.story h2{margin:0 0 3px;font-size:20px;line-height:26px;height:26px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.story p{margin:0;color:var(--text-2);max-width:1080px;line-height:22px;overflow:hidden}
+.story .back{margin-top:8px;white-space:nowrap;border:1px solid var(--hair-2);background:transparent;border-radius:7px;padding:3px 10px;font-size:12.5px;color:var(--text-2)}
+.story .back:hover{background:var(--panel-2)}
+.clock{text-align:right;white-space:nowrap}
+.clock b{display:block;font-size:30px;line-height:36px;font-weight:750;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.clock span{display:block;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) repeat(2,minmax(0,1.15fr));gap:10px;margin:12px 0}
+.kpi{border:1px solid var(--hair);background:var(--panel);border-radius:11px;padding:10px 13px;text-align:left;min-width:0}
+.kpi.action:hover,.kpi.action[aria-pressed="true"]{border-color:var(--hair-2);background:var(--panel-2)}
+.kpi .v{display:block;font-size:24px;font-weight:700;line-height:28px;height:28px}
+.kpi .l{display:flex;align-items:center;gap:7px;font-size:12.5px;line-height:18px;height:18px;color:var(--text-2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .meter{height:5px;border-radius:3px;background:rgba(255,255,255,.08);margin-top:7px;overflow:hidden}
+.kpi .meter i{display:block;height:100%;border-radius:3px;background:var(--text-2);transition:width .45s ease}
+.key{flex:none;width:10px;height:10px;border-radius:50%;display:inline-block}
+.key.sq{border-radius:2px}
+.key.go{background:var(--go)}.key.slow{background:var(--slow)}.key.route{background:var(--route)}.key.hold{background:var(--hold)}.key.stop{background:var(--stop)}.key.idle{background:transparent;border:1.5px solid var(--go)}
+
+.main{display:grid;grid-template-columns:minmax(0,1fr) 410px;gap:12px;align-items:stretch}
+.side{position:relative;min-height:640px}
+.side-in{position:absolute;inset:0;display:flex;flex-direction:column}
+.side .body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.col{display:flex;flex-direction:column;gap:12px;min-width:0}
+.src-body{padding:12px 15px}
+.src-list{height:140px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));column-gap:22px;align-content:start}
+.src-list>p{grid-column:1/-1}
+.card{border:1px solid var(--hair);background:var(--panel);border-radius:14px;min-width:0}
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 15px;border-bottom:1px solid var(--hair)}
+.card-head h3{margin:0;font-size:15.5px}
+.card-head .sub{font-size:12.5px;color:var(--muted)}
+.toggle{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;white-space:nowrap}
+.toggle input{accent-color:var(--accent)}
+
+.map-wrap{position:relative;background:var(--map);border-bottom:1px solid var(--hair)}
+#map{display:block;width:100%;height:auto;cursor:default;touch-action:manipulation}
+.dt-chip{position:absolute;left:12px;bottom:10px;max-width:330px;padding:7px 10px;border-radius:9px;background:rgba(7,22,36,.92);border:1px solid var(--hair-2);font-size:12px;color:var(--text-2);display:none}
+.dt-chip b{color:var(--text)}
+.note-open{position:absolute;right:12px;bottom:8px;font-size:11.5px;color:var(--muted);background:rgba(7,22,36,.85);padding:4px 8px;border-radius:7px}
+
+/* map marks */
+.base{stroke:var(--road-base);stroke-width:11;stroke-linecap:round;fill:none}
+.lane{fill:none;stroke-linecap:round;stroke:var(--road-open);stroke-width:2.2;transition:stroke .45s ease,stroke-width .45s ease}
+.veh{transition-property:transform;transition-timing-function:linear}
+.veh .car{transition:fill .35s ease,stroke .35s ease}
+.lane.jam{stroke:var(--warn);stroke-width:3.4}
+.lane.partial{stroke:var(--serious);stroke-width:3.4;stroke-dasharray:6 3}
+.lane.closed{stroke:var(--crit);stroke-width:3.6}
+.lane.unknown{stroke:var(--unknown);stroke-dasharray:1.5 3.5}
+.arrow{stroke:none}
+.arrow.jam{fill:var(--warn)}.arrow.partial{fill:var(--serious)}.arrow.closed{fill:var(--crit)}
+.halo{fill:none;stroke:#fff;stroke-width:14;stroke-opacity:.14;stroke-linecap:round}
+.miss{fill:none;stroke:#fff;stroke-width:1.4;stroke-dasharray:3 3;stroke-linecap:round}
+.rain{stroke:url(#rainpat);stroke-width:24;stroke-linecap:round;fill:none}
+.rain-tag rect{fill:#0c2b4d;stroke:#3f7fce}.rain-tag text{fill:#cfe3ff}
+.region{fill:#6f8799;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+.struct line{stroke:#6f8799;stroke-width:1}
+.struct text{fill:#8ba2b2;font-size:10.5px;font-style:italic}
+.route-line{fill:none;stroke:var(--route);stroke-width:4.5;stroke-linecap:round;stroke-linejoin:round;opacity:.95}
+.route-arrow{fill:var(--route)}
+.conn{fill:none;stroke:var(--stop);stroke-width:1.3;stroke-dasharray:3 3}
+.conn.sel{stroke-width:2.2;stroke-dasharray:5 3}
+.car{stroke:var(--map);stroke-width:1}
+.car.go{fill:var(--go)}.car.slow{fill:var(--slow)}.car.route{fill:var(--route)}.car.hold{fill:var(--hold)}.car.stop{fill:var(--stop)}
+.car.stale{fill:var(--map)!important;stroke-width:1.4;stroke-dasharray:2 1.5}
+.car.stale.go{stroke:var(--go)}.car.stale.slow{stroke:var(--slow)}.car.stale.route{stroke:var(--route)}.car.stale.hold{stroke:var(--hold)}.car.stale.stop{stroke:var(--stop)}
+.car.sel{stroke:#fff;stroke-width:2.2}
+.dim .car:not(.hl){opacity:.18}
+.head{fill:var(--text-2);opacity:.75}
+.stopm rect{fill:var(--map);stroke:var(--stop);stroke-width:1.6}
+.stop-tick{stroke:var(--stop);stroke-width:1;stroke-dasharray:1.5 2.5;opacity:.55}
+.stopm.used rect{fill:#10473a}
+.stopm.full rect{fill:var(--stop)}
+.stopm text{fill:var(--stop);font-size:9.5px;font-weight:800;text-anchor:middle;dominant-baseline:central}
+.stopm.full text{fill:#fff}
+.stopm .load{fill:var(--text);font-size:10.5px;font-weight:700;text-anchor:start}
+.hub rect{fill:var(--panel-2);stroke:var(--hair-2)}
+.hub .id{fill:var(--text);font-size:11.5px;font-weight:800}
+.hub .nm{fill:var(--muted);font-size:10px}
+.hub circle{fill:var(--text);stroke:var(--map);stroke-width:2}
+.fault path{stroke:var(--map);stroke-width:1.2}
+.fault.F path{fill:var(--crit)}.fault.D path{fill:var(--warn)}.fault.U path{fill:var(--unknown)}
+.fault text.mark{fill:#fff;font-size:9px;font-weight:900;text-anchor:middle;dominant-baseline:central}
+.fault.D text.mark{fill:#1b1300}
+.tag rect{fill:rgba(7,22,36,.9);stroke:var(--hair-2)}
+.tag text{fill:var(--text);font-size:11.5px;font-weight:650;dominant-baseline:central}
+.tag .k{stroke:var(--map);stroke-width:1}
+.tag line{stroke:var(--text-2);stroke-width:1}
+.road-tag text{font-weight:600;fill:var(--text-2)}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px 22px;padding:10px 15px 12px;font-size:12.5px;color:var(--text-2)}
+.legend .grp{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
+.legend .ttl{color:var(--muted);font-weight:700}
+.legend span.it{display:inline-flex;align-items:center;gap:6px}
+.lk{width:22px;height:8px;display:inline-block}
+.legend .hint{flex-basis:100%;color:var(--muted);font-size:12px}
+
+/* side card */
+.side .body{padding:13px 15px}
+.pick{display:flex;gap:8px;align-items:center}
+.pick select{flex:1;background:var(--inset);border:1px solid var(--hair-2);border-radius:8px;padding:7px 10px}
+.veh-title{display:flex;align-items:center;gap:10px;margin:12px 0 6px;flex-wrap:nowrap;min-width:0;height:32px}
+.veh-title h4{margin:0;font-size:22px;letter-spacing:-.01em;flex:none;white-space:nowrap}
+.pill .txt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pill code{flex:none}
+.pill{display:inline-flex;align-items:center;gap:7px;min-width:0;white-space:nowrap;overflow:hidden;height:28px;line-height:18px;padding:4px 10px;border-radius:999px;border:1px solid var(--hair-2);font-size:13px;font-weight:650;background:var(--inset)}
+.pill code{font:600 11px ui-monospace,Consolas,monospace;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px;margin:6px 0 10px;height:52px;overflow:hidden}
+.chip{font-size:12px;color:var(--text-2);background:var(--inset);border:1px solid var(--hair);border-radius:6px;padding:2px 8px}
+.explain{margin:0 0 8px;font-size:14.5px;line-height:21px;overflow:hidden}
+#v-road{height:126px;overflow:hidden}#v-codes{height:66px;overflow:hidden;align-content:flex-start}
+.openloop{font-size:12px;color:var(--muted);border-left:2px solid var(--hair-2);padding-left:8px;margin:0 0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sect{margin-top:12px}
+.sect h5{margin:0 0 6px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+table.odd{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed}
+table.odd col.c1{width:29%}table.odd col.c2{width:23%}table.odd col.c3{width:22%}table.odd col.c4{width:26%}
+table.odd td{padding:4px 6px;border-top:1px solid var(--hair)}
+table.odd td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}table.odd td:nth-child(2),table.odd td:nth-child(3){font-variant-numeric:tabular-nums}
+table.odd td:nth-child(3){color:var(--muted)}
+table.odd tr.bad td{background:rgba(208,59,59,.13)}
+.st{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:12.5px;white-space:nowrap}
+.st.ok{color:#3fc23f}.st.bad{color:#ff7a7a}.st.na{color:var(--muted)}
+.route-chips{display:flex;flex-wrap:wrap;align-items:center;gap:5px;font-size:13px}
+.route-chips .seg{padding:2px 7px;border-radius:6px;background:var(--inset);border:1px solid var(--hair-2)}
+.codes{display:flex;flex-wrap:wrap;gap:6px}
+.codes .code{font:600 11.5px ui-monospace,Consolas,monospace;padding:3px 7px;border-radius:6px;background:var(--inset);border:1px solid var(--hair);color:var(--text-2)}
+.codes .desc{font-size:12.5px;color:var(--muted);flex-basis:100%}
+#history{display:block;width:100%;height:34px}
+
+/* docked time control: always next to the map */
+.dock{position:sticky;bottom:0;z-index:5;margin-top:12px;background:rgba(9,25,39,.97);border:1px solid var(--hair-2);border-radius:14px;padding:8px 12px 7px;box-shadow:0 -12px 32px rgba(0,0,0,.5)}
+.dock-row{display:grid;grid-template-columns:auto minmax(0,1fr) 128px;gap:14px;align-items:center}
+.dock-ctl{display:flex;gap:6px;align-items:center}
+.speed{position:relative;width:200px;height:40px;margin-left:8px}
+.speed input{position:absolute;left:0;right:0;top:2px;width:100%;margin:0;accent-color:var(--accent);cursor:pointer}
+.speed-ticks{position:absolute;left:8px;right:8px;top:21px;height:18px}
+.speed-ticks button{position:absolute;transform:translateX(-50%);border:0;background:none;padding:6px 2px 0;font-size:10.5px;line-height:12px;color:var(--muted);cursor:pointer;white-space:nowrap}
+.speed-ticks button::before{content:'';position:absolute;left:50%;top:0;width:1px;height:5px;background:var(--muted)}
+.speed-ticks button:hover,.speed-ticks button.on{color:var(--text)}
+.speed-val{width:118px;line-height:1.15;white-space:nowrap}
+.speed-val b{display:block;font-size:17px;font-variant-numeric:tabular-nums}
+.speed-val span{display:block;font-size:11.5px;color:var(--muted)}
+#mini-wrap{min-width:0}
+#mini{display:block;width:100%;height:64px;cursor:pointer;touch-action:none}
+#mini:focus-visible{outline:2px solid var(--accent)}
+.mpin-t{fill:var(--text-2);font-size:11px;font-weight:700;cursor:pointer}
+.mpin-line{stroke:rgba(255,255,255,.28);stroke-width:1}
+.mpin.on .mpin-t{fill:var(--accent)}.mpin.on .mpin-line{stroke:var(--accent)}
+.mtick{stroke:rgba(255,255,255,.55);stroke-width:1}
+.dock-time{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.dock-time b{display:block;font-size:21px;line-height:26px}
+.dock-time span{display:block;font-size:12px;line-height:16px;color:var(--muted);white-space:nowrap}.dock-time span span{display:inline}
+.feed{display:flex;gap:8px;align-items:center;height:30px;overflow:hidden;white-space:nowrap;font-size:12.5px;line-height:18px;color:var(--text-2);border-top:1px solid var(--hair);margin-top:6px;padding-top:6px}
+.feed .ttl{color:var(--muted);font-weight:700;flex:none}
+.feed .ev{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;padding:1px 8px;border-radius:6px;background:var(--inset);border:1px solid var(--hair)}
+.feed .ev time{color:var(--muted);font-variant-numeric:tabular-nums;margin-right:6px}
+.feed .ev.now{border-color:var(--accent);color:var(--text)}
+.chg{fill:none;stroke:#fff;stroke-width:1.1;opacity:.85}
+.chain{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;height:48px;margin:0 0 10px}
+.chain .c4{border:1px solid var(--hair);background:var(--inset);border-radius:7px;padding:4px 7px;min-width:0;overflow:hidden}
+.chain .c4 small{display:block;font-size:10.5px;line-height:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.chain .c4 b{display:block;font-size:12.5px;line-height:18px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chain .ok b{color:#3fc23f}.chain .bad b{color:#ff7a7a}.chain .warn b{color:#ffc54d}.chain .na b{color:var(--muted)}
+.chain .bad{border-color:rgba(208,59,59,.6)}.chain .warn{border-color:rgba(250,178,25,.5)}
+.chain-h{margin:0 0 5px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+/* timeline */
+.timeline{margin-top:12px}
+.tl-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:11px 15px;border-bottom:1px solid var(--hair)}
+.btn{border:1px solid var(--hair-2);background:var(--panel-2);border-radius:8px;padding:6px 12px;min-width:40px}
+.btn:hover{background:#1b3a52}
+.btn.play{min-width:92px;font-weight:700}
+.speeds{display:inline-flex;border:1px solid var(--hair-2);border-radius:8px;overflow:hidden;margin-left:6px}
+.speeds button{border:0;background:transparent;padding:6px 10px;font-size:12.5px;color:var(--text-2)}
+.speeds button[aria-pressed="true"]{background:#1d4058;color:var(--text)}
+.tl-time{margin-left:auto;font-size:13px;color:var(--text-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.tl-time b{color:var(--text);font-size:15px}
+.kbd{font-size:12px;color:var(--muted);white-space:nowrap}
+#tl-wrap{position:relative;padding:8px 10px 4px}
+#tl{display:block;width:100%;cursor:pointer;touch-action:none}
+#tl:focus-visible{outline:2px solid var(--accent)}
+.tl-lbl{fill:var(--text-2);font-size:11.5px}
+.tl-lbl.h{fill:var(--muted);font-weight:700;letter-spacing:.05em;font-size:10.5px}
+.tl-axis{fill:var(--muted);font-size:10.5px}
+.tl-grid{stroke:var(--hair);stroke-width:1}
+.tl-bar{fill:#4b6275}
+.tl-bar.fault{fill:#556b7d}
+.tl-det{fill:#fff}
+.tl-play{stroke:#fff;stroke-width:1.6}
+.tl-pin circle{fill:var(--panel-2);stroke:var(--hair-2);stroke-width:1.2}
+.tl-pin.on circle{fill:var(--accent);stroke:var(--accent)}
+.tl-pin text{fill:var(--text);font-size:10.5px;font-weight:800;text-anchor:middle;dominant-baseline:central}
+.tl-pin.on text{fill:#062330}
+.chapters{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px;padding:4px 12px 13px}
+.chapters button{border:1px solid transparent;background:transparent;border-radius:8px;padding:6px 7px;text-align:left;color:var(--muted);min-width:0}
+.chapters button:hover{background:var(--panel-2)}
+.chapters button.on{border-color:#2f6f86;background:#123a50;color:var(--text)}
+.chapters b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chapters span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3}
+.chapters b{font-size:12px}
+.chapters span{font-size:11.5px}
+
+/* lower */
+.lower{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:12px;margin-top:12px;align-items:start}
+.lower .body{padding:12px 15px}
+.src-sum{display:flex;gap:14px;flex-wrap:nowrap;white-space:nowrap;overflow:hidden;font-size:13px;color:var(--text-2);margin-bottom:8px}
+.src-row{display:grid;grid-template-columns:auto minmax(0,1fr) 92px;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--hair)}
+.src-row .who b{display:block;font-size:13.5px}
+.src-row .who small{display:block;color:var(--muted);font-size:12px}
+.status{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;border:1px solid var(--hair-2);white-space:nowrap}
+.status i{font-style:normal;display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;font-size:10px;font-weight:900}
+.status.F i{background:var(--crit);color:#fff}.status.D i{background:var(--warn);color:#1b1300}.status.U i{background:var(--unknown);color:#fff}
+.trust{font-size:12px;color:var(--muted);text-align:right}
+.trust .bar{height:5px;border-radius:3px;background:rgba(255,255,255,.08);margin-top:4px;overflow:hidden}
+.trust .bar i{display:block;height:100%;background:var(--text-2)}
+.muted{color:var(--muted);font-size:12.5px}
+.qrow{display:grid;grid-template-columns:110px minmax(0,1fr) 72px;gap:10px;align-items:center;padding:6px 0;font-size:13px}
+.qrow .bar{height:7px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}
+.qrow .bar i{display:block;height:100%;background:var(--text-2)}
+.qrow b{text-align:right;font-variant-numeric:tabular-nums}
+.qtot{border-top:1px solid var(--hair);margin-top:8px;padding-top:8px;font-size:12.5px;color:var(--text-2)}
+details.cars summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:10px;align-items:center;white-space:nowrap}
+details.cars summary h3{flex:none}#cars-sum{min-width:0;overflow:hidden;text-overflow:ellipsis}
+details.cars summary::-webkit-details-marker{display:none}
+details.cars summary::after{content:"▾";color:var(--muted)}
+details.cars[open] summary::after{content:"▴"}
+.tbl-wrap{max-height:330px;overflow:auto;margin-top:8px;border-top:1px solid var(--hair)}
+table.cars{width:100%;border-collapse:collapse;font-size:12.5px}
+table.cars th{position:sticky;top:0;background:var(--panel);text-align:left;color:var(--muted);font-weight:700;padding:6px;border-bottom:1px solid var(--hair)}
+table.cars td{padding:5px 6px;border-bottom:1px solid var(--hair);white-space:nowrap}
+table.cars td:last-child{white-space:normal;color:var(--text-2)}
+table.cars tr{cursor:pointer}
+table.cars tr:hover td,table.cars tr.on td{background:var(--panel-2)}
+.foot{margin:14px 2px 0;font-size:12px;color:var(--muted)}
+.foot code{font:11.5px ui-monospace,Consolas,monospace;color:var(--text-2)}
+
+#tip{position:fixed;z-index:10;pointer-events:none;max-width:340px;padding:9px 11px;border-radius:9px;background:#061421;border:1px solid var(--hair-2);box-shadow:0 8px 28px rgba(0,0,0,.45);font-size:12.5px;color:var(--text-2);display:none}
+#tip b{color:var(--text)}
+#tip .t{font-size:13.5px;color:var(--text);font-weight:700;margin-bottom:3px}
+#tip .r{display:flex;justify-content:space-between;gap:14px}
+#tip .r span:last-child{color:var(--text);font-variant-numeric:tabular-nums}
+
+@media (max-width:1280px){.side .card-head .sub{display:none}.main{grid-template-columns:minmax(0,1fr) 370px}.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.chapters{grid-template-columns:repeat(5,minmax(0,1fr))}.lower{grid-template-columns:1fr 1fr}}
+@media (max-width:980px){.side{min-height:0}.side-in{position:static}.main{grid-template-columns:1fr}.story{grid-template-columns:1fr}.clock{text-align:left}.top{display:block}.badges{justify-content:flex-start;margin-top:10px}.lower{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-height:820px) and (min-width:981px){.app{padding-top:12px}.top{margin-bottom:8px}.top p,.badges{display:none}.top h1{font-size:26px}.story{padding:10px 16px}.kpis{margin:8px 0}.kpi{padding:7px 12px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}.veh{transition:none!important}}
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="top">
+    <div>
+      <div class="eyebrow" id="h-eyebrow"></div>
+      <h1 id="h-title"></h1>
+      <p id="h-sub"></p>
+    </div>
+    <div class="badges">
+      <span class="badge">Решения — вывод solution.py без изменений</span>
+      <span class="badge">Разметка — только для пояснений</span>
+      <span class="badge">Работает без сети</span>
+    </div>
+  </header>
+
+
+  <section class="kpis" id="kpis" aria-label="Решения контроллера на текущем шаге"></section>
+
+  <section class="main">
+    <div class="col">
+    <div class="card">
+      <div class="card-head">
+        <div><h3>Схема коридора</h3><div class="sub">Наведите на дорогу, машину, площадку или источник · щелчок по машине — её данные справа</div></div>
+        <label class="toggle"><input type="checkbox" id="show-miss"> Показать расхождения с разметкой</label>
+      </div>
+      <div class="map-wrap">
+        <svg id="map" viewBox="0 0 1100 480" role="img" aria-label="Схема дорожной сети с состояниями дорог и машинами"><defs><pattern id="rainpat" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(25)"><rect width="6" height="6" fill="#1f5fae"/><line x1="1" y1="0" x2="1" y2="6" stroke="#8ec1ff" stroke-width="1.3"/></pattern></defs></svg>
+        <div class="dt-chip" id="dt-chip"></div>
+        <div class="note-open">Позиции — из записи сценария: запись не реагирует на команды</div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="card"><div class="card-head"><h3>Источники данных</h3><span class="sub" id="src-count"></span></div><div class="body src-body" id="sources"></div></div>
+    </div>
+
+    <aside class="card side" aria-label="Объяснение решения для выбранной машины"><div class="side-in">
+      <div class="card-head"><h3>Выбранная машина</h3><span class="sub">щелчок по машине — выбрать</span></div>
+      <div class="body">
+        <div class="pick"><label for="veh" class="muted">Машина</label><select id="veh"></select></div>
+        <div class="veh-title"><h4 id="v-id"></h4><span class="pill" id="v-pill"></span></div>
+        <div class="chips" id="v-chips"></div>
+        <h5 class="chain-h">Проверки на этом шаге</h5>
+        <div class="chain" id="v-chain"></div>
+        <p class="openloop" id="v-openloop" style="visibility:hidden" title="Сценарий записан заранее и не реагирует на команды контроллера: на карте — записанные позиции, в карточке — решение контроллера.">В записи машина едет дальше: запись не реагирует на команды</p>
+        <div class="sect"><h5 id="odd-title">Проверка ODD</h5><table class="odd" id="v-odd"></table></div>
+        <div class="sect" id="v-road"></div>
+        <div class="sect"><h5>Машинный вывод</h5><div class="codes" id="v-codes"></div></div>
+        <div class="sect"><h5>История решений этой машины за сценарий</h5><svg id="history" role="img" aria-label="История решений выбранной машины"></svg></div>
+      </div>
+    </div></aside>
+  </section>
+
+  <section class="dock" id="dock" aria-label="Управление временем">
+    <div class="dock-row">
+      <div class="dock-ctl">
+        <button class="btn" id="prev-ch" title="Предыдущий отмеченный момент (PageUp)">⏮</button>
+        <button class="btn play" id="play">▶ Пуск</button>
+        <button class="btn" id="next-ch" title="Следующий отмеченный момент (PageDown)">⏭</button>
+        <div class="speed">
+          <input type="range" id="speed" min="0" max="1000" step="1" aria-label="Скорость воспроизведения, от ×1 до ×75">
+          <div class="speed-ticks" id="speed-ticks"></div>
+        </div>
+        <div class="speed-val"><b id="speed-x"></b><span id="speed-dur"></span></div>
+      </div>
+      <div id="mini-wrap"><svg id="mini" tabindex="0" role="slider" aria-label="Время сценария: перетащите или щёлкните по отметке" aria-valuemin="1"></svg></div>
+      <div class="dock-time"><b id="tl-clock"></b><span>шаг <span id="tl-step"></span></span></div>
+    </div>
+    <div class="feed" id="feed" aria-live="polite"></div>
+  </section>
+
+  <section class="card timeline" aria-label="Таймлайн сценария">
+    <div class="card-head"><div><h3>Подробный таймлайн</h3><div class="sub">События по разметке и момент, когда контроллер их заметил · шкала тоже перематывается</div></div><span class="kbd">← → шаг · Shift — минута · Пробел — пуск · PageUp/PageDown — отметки</span></div>
+    <div id="tl-wrap"><svg id="tl" tabindex="0" role="slider" aria-label="Шаг сценария" aria-valuemin="1"></svg></div>
+    <div class="chapters" id="chapters"></div>
+  </section>
+
+  <section class="lower">
+    <div class="card"><div class="card-head"><h3>Сверка с разметкой</h3><span class="sub">на этом шаге</span></div><div class="body" id="quality"></div></div>
+    <div class="card cars-card"><div class="body"><details class="cars" id="cars"><summary><h3 style="margin:0;font-size:15.5px" id="cars-title"></h3><span class="muted" id="cars-sum"></span></summary><div class="tbl-wrap"><table class="cars" id="cars-table"></table></div></details></div></div>
+  </section>
+
+  <p class="foot" id="foot"></p>
+</main>
+<div id="tip" role="tooltip"></div>
+<script src="data.js"></script>
+<script>
+(() => {
+'use strict';
+const D = window.CORRIDOR_DEMO;
+if (!D) { document.body.textContent = 'Не найден файл data.js рядом с index.html'; return; }
+const $ = id => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
+const S = D.steps, N = D.meta.steps, NV = D.vehicles.length;
+
+/* ---------- dictionaries ---------- */
+const ACT = {
+  C: {ru: 'Продолжает движение', kpi: 'едут', cls: 'go', sq: false, code: 'CONTINUE'},
+  L: {ru: 'Снижает скорость', kpi: 'снижают скорость', cls: 'slow', sq: false, code: 'LIMIT_SPEED'},
+  R: {ru: 'Новый маршрут', kpi: 'новый маршрут', cls: 'route', sq: false, code: 'REROUTE'},
+  H: {ru: 'Ждёт на месте', kpi: 'ждут на месте', cls: 'hold', sq: true, code: 'HOLD'},
+  S: {ru: 'Едет на площадку', kpi: 'едут на площадку', cls: 'stop', sq: true, code: 'SAFE_STOP'},
+  N: {ru: 'Вне движения', kpi: 'вне движения', cls: 'idle', sq: false, code: 'NO_ACTION'},
+};
+const ACT_ORDER = ['C', 'L', 'R', 'S', 'H'];
+const ROAD = {O: {ru: 'открыто', cls: ''}, C: {ru: 'затор', cls: 'jam'}, P: {ru: 'частично перекрыто', cls: 'partial'}, X: {ru: 'закрыто', cls: 'closed'}, U: {ru: 'нет данных', cls: 'unknown'}};
+const ROAD_PRI = {X: 3, P: 2, C: 1, U: 0, O: -1};
+const ODD_CODE_RU = {VISIBILITY: 'видимость', RAIN: 'осадки', GNSS: 'точность GNSS', V2X: 'связь V2X', STRUCTURE: 'тип сооружения', WEIGHT_LIMIT: 'масса', MAP_AGE: 'возраст карты'};
+const STRUCT_RU = {open: 'открытая дорога', bridge: 'мост', tunnel: 'тоннель'};
+const STRUCT_SHORT = {open: 'дорога', bridge: 'мост', tunnel: 'тоннель'};
+const SRC_TYPE_RU = {ROAD_DETECTOR: 'дорожный детектор', VIDEO_ANALYTICS: 'видеоаналитика', RSU: 'придорожный модуль V2X', WEATHER: 'метеостанция', DIGITAL_TWIN: 'цифровой двойник'};
+const SRC_STATUS = {O: 'норма', D: 'деградация', F: 'отказ', U: 'нет данных'};
+const FAULT_RU = {OUTAGE: 'нет сообщений', DELAY: 'задержка', TIME_SKEW: 'сдвиг часов', FREEZE: 'залипание', DRIFT: 'дрейф', PACKET_LOSS: 'потери пакетов', BIAS: 'смещение', BYZANTINE: 'противоречивые данные', FALSE_LANE_CLOSURE: 'ложное перекрытие', STALE: 'устаревшие данные'};
+const GROUP_RU = {MAIN: 'главный ход', NORTH: 'северный обход', SOUTH: 'южный обход', CONNECTOR: 'соединитель'};
+const GROUP_TITLE = {MAIN: 'Главный ход', NORTH: 'Северный обход', SOUTH: 'Южный обход'};
+
+const plural = (n, one, few, many) => { const a = Math.abs(n) % 100, b = a % 10; return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many; };
+const cars = n => `${n} ${plural(n, 'машина', 'машины', 'машин')}`;
+const num = (x, d = 1) => Number(x).toFixed(d).replace('.', ',');
+const t0 = D.meta.t0.split(':').reduce((a, v) => a * 60 + Number(v), 0);
+const clock = k => { const s = t0 + k * D.meta.dt; return [Math.floor(s / 3600) % 24, Math.floor(s / 60) % 60, s % 60].map(v => String(v).padStart(2, '0')).join(':'); };
+const el = (tag, attrs = {}, parent) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); if (parent) parent.append(n); return n; };
+const h = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+
+/* ---------- indices ---------- */
+const segs = D.segments, segIdx = Object.fromEntries(segs.map((s, i) => [s.id, i]));
+const nodeById = Object.fromEntries(D.nodes.map(n => [n.id, n]));
+const vehIdx = Object.fromEntries(D.vehicles.map((v, i) => [v.id, i]));
+const stopById = Object.fromEntries(D.stops.map(s => [s.id, s]));
+const hubById = Object.fromEntries(D.hubs.map(x => [x.id, x]));
+const zoneIdx = Object.fromEntries(D.zones.map((z, i) => [z, i]));
+const totalStopCap = D.stops.reduce((a, s) => a + s.capacity, 0);
+const REMOTE_LIMIT = D.meta.remoteLimit || 6;
+
+// decision index for every (step, vehicle)
+const dec = new Int16Array(N * NV);
+D.runs.forEach((runs, i) => { let r = 0; for (let k = 0; k < N; k++) { while (r + 1 < runs.length && runs[r + 1][0] <= k) r++; dec[k * NV + i] = runs[r][1]; } });
+const decision = (k, i) => D.decisions[dec[k * NV + i]];
+const counts = Array.from({length: N}, (_, k) => { const c = {C: 0, L: 0, R: 0, H: 0, S: 0, N: 0, remote: 0}; for (let i = 0; i < NV; i++) { const d = decision(k, i); c[d[0]]++; c.remote += d[6]; } return c; });
+const srcAt = k => { const m = new Map(); for (const [i, st, mask, trust] of S.src[k]) m.set(i, {st, mask, trust}); return m; };
+const faultsOf = mask => D.faultNames.filter((_, b) => mask & (1 << b));
+// start step of the current non-OK run of every source
+const srcSince = []; { const cur = new Map(); for (let k = 0; k < N; k++) { const m = srcAt(k), row = new Map(); for (const [i] of m) row.set(i, cur.has(i) ? cur.get(i) : k); srcSince.push(row); cur.clear(); for (const [i, v] of row) cur.set(i, v); } }
+const chapters = D.chapters;
+// what changed on every step: roads, sources and groups of cars whose decision changed
+const WHO_MANY = {C: 'едут', L: 'снижают скорость', R: 'новый маршрут', H: 'ждут', S: 'на площадку', N: 'вне движения'};
+const WHO_ONE = {C: 'едет', L: 'снижает скорость', R: 'новый маршрут', H: 'ждёт', S: 'на площадку', N: 'вне движения'};
+const RAT_SHORT = {STATE_CONGESTED: 'затор', STATE_PARTIAL_BLOCK: 'перекрытие', STATE_CLOSED: 'дорога закрыта', STATE_UNKNOWN: 'нет данных о дороге', STATE_OPEN: 'дорога свободна', NO_FRESH_DATA: 'нет телеметрии', LOW_CONFIDENCE: 'выдержка после нарушения', ROUTE_HUB_CAPACITY: 'терминал занят', AT_HUB_OR_INACTIVE: 'в терминале'};
+const changes = Array.from({length: N}, () => []);
+const recentCars = Array.from({length: N}, () => new Set());
+
+const actOf = k => { let a = 0; chapters.forEach((c, i) => { if (c.index <= k) a = i; }); return a; };
+function reasonOf(d) { return d[3].length ? 'ODD: ' + d[3].map(c => ODD_CODE_RU[c]).join(', ') : (RAT_SHORT[d[1][0]] || d[1][0] || ''); }
+for (let k = 1; k < N; k++) {
+  const out = changes[k];
+  for (let si = 0; si < D.segments.length; si++) { const a = S.roads[k - 1][si], b = S.roads[k][si]; if (a !== b) out.push({kind: 'road', text: `${D.segments[si].id}: ${ROAD[a].ru} → ${ROAD[b].ru}`}); }
+  const m0 = srcAt(k - 1), m1 = srcAt(k);
+  for (const i of new Set([...m0.keys(), ...m1.keys()])) {
+    const a = m0.get(i), b = m1.get(i), sa = a ? a.st : 'O', sb = b ? b.st : 'O';
+    if (sa !== sb) out.push({kind: 'src', text: `${D.sources[i].id}: ${SRC_STATUS[sa]} → ${SRC_STATUS[sb]}` + (b ? ` (${faultsOf(b.mask).map(f => FAULT_RU[f]).join(', ')})` : '')});
+  }
+  const groups = new Map();
+  for (let i = 0; i < NV; i++) {
+    const d0 = decision(k - 1, i), d1 = decision(k, i); if (d0[0] === d1[0]) continue;
+    const key = `${d0[0]}|${d1[0]}|${reasonOf(d1)}`; if (!groups.has(key)) groups.set(key, []); groups.get(key).push(i);
+  }
+  for (const [key, ids] of groups) {
+    const [a0, a1, why] = key.split('|'), profs = new Set(ids.map(i => D.vehicles[i].profile));
+    const who = ids.length === 1 ? `${D.vehicles[ids[0]].id}: ${WHO_ONE[a0]} → ${WHO_ONE[a1]}` : `${cars(ids.length)}${profs.size === 1 ? ' ' + [...profs][0] : ''}: ${WHO_MANY[a0]} → ${WHO_MANY[a1]}`;
+    out.push({kind: 'car', text: who + (why ? ` · ${why}` : ''), ids});
+  }
+}
+for (let k = 0; k < N; k++) for (let j = Math.max(1, k - 11); j <= k; j++) for (const c of changes[j]) if (c.ids) c.ids.forEach(i => recentCars[k].add(i));
+
+/* ---------- geometry ---------- */
+const xs = D.nodes.map(n => n.x), ys = D.nodes.map(n => n.y);
+const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+const P = n => ({x: 72 + (n.x - minX) / (maxX - minX) * 956, y: 416 - (n.y - minY) / (maxY - minY) * 346});
+const LANE = 2.6, CAR = 9.6, STOP_OFF = 36, TRIM = 5, SP = 8.4, ROW_GAP = 7.6, R = 3.2; // cars: spacing along the lane, between rows, radius
+const geo = segs.map(s => {
+  const a = P(nodeById[s.from]), b = P(nodeById[s.to]);
+  const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len;
+  const nx = -uy, ny = ux; // right-hand side in screen coordinates
+  const ax = a.x + ux * TRIM, ay = a.y + uy * TRIM, L = len - 2 * TRIM;
+  const at = (d, off) => ({x: ax + ux * d + nx * off, y: ay + uy * d + ny * off});
+  const dir = Math.abs(ux) > Math.abs(uy) ? (ux > 0 ? 'на восток' : 'на запад') : (uy < 0 ? 'на север' : 'на юг');
+  return {a, b, ux, uy, nx, ny, L, at, dir};
+});
+
+// sample points of every road and of the first two car rows beside it (where cars usually are)
+const bandPts = [];
+geo.forEach(g => { for (let t = 0; t <= 1.0001; t += .04) for (const off of [0, CAR, CAR + ROW_GAP]) { const q = g.at(g.L * t, off); bandPts.push(q.x, q.y); } });
+const countIn = (r, pts, pad = 0) => { let n = 0; for (let j = 0; j < pts.length; j += 2) if (pts[j] > r.x - pad && pts[j] < r.x + r.w + pad && pts[j + 1] > r.y - pad && pts[j + 1] < r.y + r.h + pad) n++; return n; };
+// hubs also keep away from deeper queues (up to four rows of cars) that form at terminals
+const hubBand = [];
+geo.forEach(g => { for (let t = 0; t <= 1.0001; t += .04) for (let row = 0; row < 5; row++) { const q = g.at(g.L * t, row ? CAR + (row - 1) * ROW_GAP : 0); hubBand.push(q.x, q.y); } });
+let hubBoxCache = null;
+function hubBoxes() {
+  if (hubBoxCache) return hubBoxCache;
+  hubBoxCache = D.hubs.map(hb => {
+    const p = P(nodeById[hb.node]), w = 76, hh = 30;
+    const cands = [[-w / 2, -49], [10, -45], [-w - 10, -45], [-w / 2, 19], [10, 15], [-w - 10, 15], [12, -15], [-w - 12, -15],
+                   [-w / 2, -66], [14, -62], [-w - 14, -62], [-w / 2, 36], [14, 32], [-w - 14, 32]];
+    let best = null;
+    cands.forEach(([dx, dy], n) => {
+      const r = {x: p.x + dx, y: p.y + dy, w, h: hh};
+      if (r.x < 4 || r.y < 4 || r.x + w > 1096 || r.y + hh > 476) return;
+      const score = countIn(r, hubBand, 2) * 10 + n * .5;
+      if (!best || score < best.score) best = {...r, score};
+    });
+    return {hb, p, ...(best || {x: p.x - w / 2, y: p.y - 49, w, h: hh})};
+  });
+  return hubBoxCache;
+}
+/* ---------- static map ---------- */
+const map = $('map');
+const layer = name => el('g', {id: 'g-' + name}, map);
+const L = {};
+['regions', 'rain', 'base', 'halo', 'lanes', 'marks', 'route', 'conn', 'stops', 'hubs', 'cars', 'faults', 'labels'].forEach(n => L[n] = layer(n));
+
+{ // one label per road group (except connectors), placed on the side away from the map centre
+  const mid = (P({x: 0, y: minY}).y + P({x: 0, y: maxY}).y) / 2, groups = {};
+  for (const s of segs) if (s.group !== 'CONNECTOR') (groups[s.group] = groups[s.group] || new Set()).add(s.from).add(s.to);
+  for (const [g, ids] of Object.entries(groups)) {
+    const pts = [...ids].map(id => P(nodeById[id])).sort((a, b) => a.x - b.x), avg = pts.reduce((a, p) => a + p.y, 0) / pts.length;
+    const below = avg > mid + 40, y = below ? Math.max(...pts.map(p => p.y)) + 42 : Math.min(...pts.map(p => p.y)) - 32;
+    const n = el('text', {x: pts[0].x, y, class: 'region', 'text-anchor': 'start'}, L.regions); n.textContent = GROUP_TITLE[g] || g;
+    const w = n.getComputedTextLength();
+    for (const q of pts) { if (q.x + w > 1090) break; if (!crossesRoad(q.x + 8, y - 11, q.x + 8 + w, y + 3)) { n.setAttribute('x', q.x + 8); break; } }
+  }
+}
+function crossesRoad(x0, y0, x1, y1) {
+  for (const g of geo) for (let t = 0; t <= 1; t += .02) { const x = g.a.x + (g.b.x - g.a.x) * t, y = g.a.y + (g.b.y - g.a.y) * t; if (x > x0 - 3 && x < x1 + 3 && y > y0 - 3 && y < y1 + 3) return true; }
+  return hubBoxes().some(b => x1 > b.x - 3 && x0 < b.x + b.w + 3 && y1 > b.y - 3 && y0 < b.y + b.h + 3);
+}
+function bracket(fromNode, toNode, text, dy, at = .5) {
+  const a = P(nodeById[fromNode]), b = P(nodeById[toNode]), y = a.y + dy, g = el('g', {class: 'struct'}, L.regions);
+  el('line', {x1: a.x + 8, y1: y, x2: b.x - 8, y2: y}, g); el('line', {x1: a.x + 8, y1: y - 3, x2: a.x + 8, y2: y + 3}, g); el('line', {x1: b.x - 8, y1: y - 3, x2: b.x - 8, y2: y + 3}, g);
+  const ty = y + (dy < 0 ? -5 : 13), t = el('text', {x: a.x + (b.x - a.x) * at, y: ty, 'text-anchor': 'middle'}, g); t.textContent = text;
+  const w = t.getComputedTextLength();
+  for (const f of [at, .5, .3, .7, .2, .8, .12, .88]) { const x = a.x + (b.x - a.x) * f; if (!crossesRoad(x - w / 2, ty - 10, x + w / 2, ty + 3)) { t.setAttribute('x', x); break; } }
+}
+{ // brackets over consecutive tunnel / bridge sections
+  const pairs = new Map();
+  for (const s of segs) if (s.structure !== 'open') pairs.set([s.from, s.to].sort().join('|'), {a: s.from, b: s.to, st: s.structure});
+  const used = new Set();
+  for (const [key, p] of pairs) {
+    if (used.has(key)) continue; used.add(key); let chain = [p.a, p.b], grew = true;
+    while (grew) { grew = false; for (const [k2, q] of pairs) { if (used.has(k2) || q.st !== p.st) continue;
+      if (q.a === chain[chain.length - 1] || q.b === chain[chain.length - 1]) { chain.push(q.a === chain[chain.length - 1] ? q.b : q.a); used.add(k2); grew = true; }
+      else if (q.a === chain[0] || q.b === chain[0]) { chain.unshift(q.a === chain[0] ? q.b : q.a); used.add(k2); grew = true; } } }
+    const ends = [chain[0], chain[chain.length - 1]].sort((x, y) => P(nodeById[x]).x - P(nodeById[y]).x);
+    bracket(ends[0], ends[1], STRUCT_RU[p.st] || p.st, 26);
+  }
+}
+
+const seenPair = new Set();
+segs.forEach((s, i) => { const key = [s.from, s.to].sort().join('|'); if (seenPair.has(key)) return; seenPair.add(key); const g = geo[i]; el('line', {x1: g.a.x, y1: g.a.y, x2: g.b.x, y2: g.b.y, class: 'base'}, L.base); });
+const laneEls = segs.map((s, i) => { const g = geo[i], p = g.at(0, LANE), q = g.at(g.L, LANE); return el('line', {x1: p.x, y1: p.y, x2: q.x, y2: q.y, class: 'lane'}, L.lanes); });
+
+const stopEls = D.stops.map(st => {
+  const g = geo[segIdx[st.segment]];
+  let best = null;
+  for (const t of [.5, .38, .62, .28, .72]) for (const off of [STOP_OFF, -STOP_OFF - ROW_GAP]) {
+    const q = g.at(g.L * t, off), r = {x: q.x - 9, y: q.y - 9, w: 34, h: 18};
+    const score = countIn(r, bandPts, 1) * 10 + (crossesRoad(r.x, r.y, r.x + r.w, r.y + r.h) ? 20 : 0) + Math.abs(t - .5) * 4 + (off < 0 ? 3 : 0);
+    if (!best || score < best.score) best = {score, t, off, q};
+  }
+  const p = best.q, base = g.at(g.L * best.t, LANE), grp = el('g', {class: 'stopm'}, L.stops);
+  el('line', {x1: base.x, y1: base.y, x2: p.x, y2: p.y, class: 'stop-tick'}, grp);
+  el('rect', {x: p.x - 6.5, y: p.y - 6.5, width: 13, height: 13, rx: 3}, grp);
+  el('text', {x: p.x, y: p.y + .5}, grp).textContent = 'P';
+  const load = el('text', {x: p.x + 10, y: p.y + .5, class: 'load', 'dominant-baseline': 'central'}, grp);
+  return {st, p, grp, load};
+});
+
+const hubRects = [], staticRects = [];
+hubBoxes().forEach(({hb, p, x, y, w}) => {
+  const g = el('g', {class: 'hub'}, L.hubs);
+  el('circle', {cx: p.x, cy: p.y, r: 4.5}, g);
+  const short = hb.name.split(' ')[0];
+  el('rect', {x, y, width: w, height: 30, rx: 7}, g);
+  el('text', {x: x + 8, y: y + 12.5, class: 'id'}, g).textContent = hb.id;
+  el('text', {x: x + 8, y: y + 24.5, class: 'nm'}, g).textContent = short;
+  hubRects.push({x, y, w, h: 30, hub: hb, p});
+});
+
+/* ---------- legend ---------- */
+(function legend() {
+  const lg = $('legend');
+  const lineKey = (cls, dash) => { const s = document.createElementNS(NS, 'svg'); s.setAttribute('class', 'lk'); s.setAttribute('viewBox', '0 0 22 8'); const l = el('line', {x1: 1, y1: 4, x2: 21, y2: 4, class: 'lane ' + cls}, s); if (dash) l.setAttribute('stroke-dasharray', dash); return s; };
+  const item = (key, text) => { const s = h('span', 'it'); s.append(key, document.createTextNode(text)); return s; };
+  const g1 = h('div', 'grp'); g1.append(h('span', 'ttl', 'Дороги:'), item(lineKey(''), 'открыто'), item(lineKey('jam'), 'затор'), item(lineKey('partial'), 'частично перекрыто'), item(lineKey('closed'), 'закрыто'), item(lineKey('unknown'), 'нет данных'));
+  const g2 = h('div', 'grp'); g2.append(h('span', 'ttl', 'Машины:'));
+  for (const a of ['C', 'L', 'R', 'H', 'S']) { const k = h('i', 'key ' + ACT[a].cls + (ACT[a].sq ? ' sq' : '')); g2.append(item(k, ACT[a].kpi)); }
+  g2.append(item(h('i', 'key idle'), 'нет свежих данных'));
+  { const r = h('i', 'key'); r.style.cssText = 'background:transparent;border:1.5px solid #fff;width:12px;height:12px'; g2.append(item(r, 'решение сменилось за последнюю минуту')); }
+  const g3 = h('div', 'grp'); g3.append(h('span', 'ttl', 'Прочее:'));
+  const pk = h('i', 'key sq'); pk.style.cssText = 'background:transparent;border:1.6px solid var(--stop)';
+  const rk = h('i', 'key'); rk.style.cssText = 'width:18px;border-radius:5px;background:rgba(57,135,229,.35)';
+  const fk = h('i', 'key'); fk.style.cssText = 'background:var(--crit);transform:rotate(45deg);border-radius:1px;width:9px;height:9px';
+  g3.append(item(pk, 'площадка безопасной остановки (занято/мест)'), item(rk, 'зона дождя по оценке контроллера'), item(fk, 'источник с отказом'));
+  lg.append(g1, g2, g3, h('span', 'hint', 'Каждое направление дороги — своя линия; машины нарисованы справа от своей полосы по ходу движения, стрелка — голова колонны.'));
+})();
+
+/* ---------- KPI tiles ---------- */
+const kpiEls = {};
+let highlight = null;
+(function kpis() {
+  const box = $('kpis');
+  for (const a of ['C', 'L', 'R', 'H', 'S']) {
+    const b = h('button', 'kpi action'); b.type = 'button'; b.setAttribute('aria-pressed', 'false');
+    b.title = 'Подсветить эти машины на карте';
+    const v = h('span', 'v'), l = h('span', 'l'); l.append(h('i', 'key ' + ACT[a].cls + (ACT[a].sq ? ' sq' : '')), document.createTextNode(ACT[a].kpi));
+    b.append(v, l); box.append(b); kpiEls[a] = v;
+    b.addEventListener('mouseenter', () => setHighlight(a, false));
+    b.addEventListener('mouseleave', () => setHighlight(pinned, false));
+    b.addEventListener('click', () => { pinned = pinned === a ? null : a; document.querySelectorAll('.kpi.action').forEach(x => x.setAttribute('aria-pressed', 'false')); if (pinned) b.setAttribute('aria-pressed', 'true'); setHighlight(pinned, true); });
+  }
+  for (const [key, label] of [['stops', 'мест на площадках занято'], ['remote', 'сессий дистанц. поддержки']]) {
+    const d = h('div', 'kpi'), v = h('span', 'v'), l = h('span', 'l', label), m = h('div', 'meter'), i = h('i');
+    m.append(i); d.append(v, l, m); box.append(d); kpiEls[key] = {v, i};
+  }
+})();
+let pinned = null;
+function setHighlight(a) { highlight = a; map.classList.toggle('dim', !!a); renderCars(cur); }
+
+/* ---------- vehicle select ---------- */
+(function select() {
+  const sel = $('veh'), groups = {};
+  for (const v of D.vehicles) { if (!groups[v.profile]) { groups[v.profile] = document.createElement('optgroup'); groups[v.profile].label = 'Профиль ' + v.profile; sel.append(groups[v.profile]); } const o = document.createElement('option'); o.value = v.id; o.textContent = `${v.id} · ${v.profile} · ${num(v.mass)} т`; groups[v.profile].append(o); }
+  sel.addEventListener('change', () => { selected = sel.value; userPicked = true; render(); });
+})();
+
+/* ---------- state ---------- */
+let cur = chapters.findIndex(c => c.title === 'Пик вмешательств');
+cur = chapters[cur >= 0 ? cur : Math.min(1, chapters.length - 1)].index;
+let selected = chapters[actOf(cur)].select, userPicked = false, lastAct = actOf(cur), timer = null, speed = 30 / D.meta.dt; // steps per second = multiplier / step length
+{ // deep link: index.html#step=340&car=AV-003
+  const q = new URLSearchParams(location.hash.slice(1)), st = Number(q.get('step')), car = q.get('car');
+  if (st >= 1 && st <= N) { cur = st - 1; lastAct = actOf(cur); selected = chapters[lastAct].select; }
+  if (car && vehIdx[car] != null) { selected = car; userPicked = true; }
+}
+let carPos = []; // [{i, x, y}]
+
+/* ---------- per-step helpers ---------- */
+const condFor = (k, si) => { const [uniq, idx] = S.cond[k]; return uniq[idx[si]]; };
+const posOf = (k, i) => { const a = S.pos[k]; return a[2 * i] < 0 ? null : {si: a[2 * i], off: a[2 * i + 1] * 10}; };
+const stopLoad = k => { const m = {}; for (let i = 0; i < NV; i++) { const d = decision(k, i); if (d[0] === 'S') m[d[5]] = (m[d[5]] || 0) + 1; } return m; };
+const ageOf = (k, i) => { const r = S.age[k].find(x => x[0] === i); return r ? r[1] : 0; };
+const roadInfo = (k, si) => S.roadInfo[k].find(r => r[0] === si);
+const whyText = w => !w ? '' : w[0] === 'far' ? `ближайшая допустимая площадка ${w[1]} — примерно в ${w[2]} мин пути, а место резервируется только в пределах ${D.meta.stopReachSec / 60} минут` : w[0] === 'busy' ? `подходящая площадка ${w[1]} занята` : 'нет допустимого пути ни к одной площадке';
+
+/* ---------- map dynamic ---------- */
+function clear(g) { while (g.firstChild) g.firstChild.remove(); }
+function arrowAt(g, d, off, cls, size, parent) {
+  const c = g.at(d, off), s = size;
+  const pts = [[c.x + g.ux * s, c.y + g.uy * s], [c.x - g.ux * s * .7 + g.nx * s * .75, c.y - g.uy * s * .7 + g.ny * s * .75], [c.x - g.ux * s * .7 - g.nx * s * .75, c.y - g.uy * s * .7 - g.ny * s * .75]];
+  return el('path', {d: 'M' + pts.map(p => p.map(v => v.toFixed(1)).join(',')).join('L') + 'Z', class: cls}, parent);
+}
+let rainTag = null;
+function renderRoads(k) {
+  const roads = S.roads[k];
+  clear(L.marks); clear(L.halo); clear(L.rain);
+  const ch = chapters[actOf(k)];
+  for (let si = 0; si < segs.length; si++) {
+    const c = roads[si]; laneEls[si].setAttribute('class', 'lane ' + ROAD[c].cls);
+    if (c !== 'O' && c !== 'U') arrowAt(geo[si], geo[si].L / 2, LANE, 'arrow ' + ROAD[c].cls, 5, L.marks);
+  }
+  for (const id of ch.segments || []) { const si = segIdx[id], g = geo[si], p = g.at(0, LANE), q = g.at(g.L, LANE); el('line', {x1: p.x, y1: p.y, x2: q.x, y2: q.y, class: 'halo'}, L.halo); }
+  if ($('show-miss').checked) for (const [si] of (S.miss ? S.miss[k] : [])) { const g = geo[si], p = g.at(0, LANE), q = g.at(g.L, LANE); el('line', {x1: p.x, y1: p.y, x2: q.x, y2: q.y, class: 'miss'}, L.marks); }
+  // rain zone from the controller's weather estimate
+  const wet = []; let lvl = 0, vis = 1e9;
+  segs.forEach((s, si) => { const w = condFor(k, si); if (w && w[1] >= 2) { wet.push(si); lvl = Math.max(lvl, w[1]); } });
+  if (wet.length) {
+    const g = el('g', {opacity: .3}, L.rain);
+    for (const si of wet) { const s = geo[si]; el('line', {x1: s.a.x, y1: s.a.y, x2: s.b.x, y2: s.b.y, class: 'rain'}, g); }
+    const top = wet.map(si => geo[si]).sort((a, b) => Math.min(a.a.y, a.b.y) - Math.min(b.a.y, b.b.y))[0];
+    rainTag = {x: (top.a.x + top.b.x) / 2, y: Math.min(top.a.y, top.b.y) - 12, text: `Дождь уровня ${lvl} из 3 (оценка контроллера)`};
+  } else rainTag = null;
+}
+const carNodes = new Map();
+function renderCars(k) {
+  clear(L.conn); clear(L.route);
+  carPos = [];
+  const bySeg = new Map();
+  for (let i = 0; i < NV; i++) { const p = posOf(k, i); if (!p) continue; const g = geo[p.si]; const d = Math.max(0, Math.min(g.L, p.off / segs[p.si].length * g.L)); if (!bySeg.has(p.si)) bySeg.set(p.si, []); bySeg.get(p.si).push({i, d}); }
+  const items = [];
+  for (const [si, list] of bySeg) {
+    const g = geo[si]; list.sort((a, b) => b.d - a.d || a.i - b.i);
+    const cap = Math.max(1, Math.floor(g.L / SP) + 1), rows = Math.ceil(list.length / cap), per = Math.ceil(list.length / rows);
+    for (let r = 0; r < rows; r++) {
+      const chunk = list.slice(r * per, (r + 1) * per);
+      chunk.forEach((c, j) => { c.pd = j === 0 ? c.d : Math.min(c.d, chunk[j - 1].pd - SP); c.row = r; });
+      for (let j = chunk.length - 1; j >= 0; j--) { const lo = j === chunk.length - 1 ? 0 : chunk[j + 1].pd + SP; if (chunk[j].pd < lo) chunk[j].pd = lo; }
+      chunk.forEach(c => { c.pd = Math.min(g.L, c.pd); });
+    }
+    list.forEach((c, j) => { const q = g.at(c.pd, CAR + c.row * ROW_GAP); items.push({i: c.i, si, g, pd: c.pd, head: j === 0, x: q.x, y: q.y, r: D.vehicles[c.i].id === selected ? 6 : R}); });
+  }
+  // where lanes meet, cars of different roads can touch: push them apart a little (deterministic order)
+  for (let it = 0; it < 4; it++) for (let a = 0; a < items.length; a++) for (let b = a + 1; b < items.length; b++) {
+    const A = items[a], B = items[b], dx = B.x - A.x, dy = B.y - A.y, dist = Math.hypot(dx, dy), need = A.r + B.r + 1.2;
+    if (dist >= need) continue;
+    const ux = dist > .01 ? dx / dist : A.g.nx, uy = dist > .01 ? dy / dist : A.g.ny, m = (need - dist) / 2;
+    A.x -= ux * m; A.y -= uy * m; B.x += ux * m; B.y += uy * m;
+  }
+  const seen = new Set();
+  for (const it of items) {
+    const d = decision(k, it.i), a = ACT[d[0]], stale = ageOf(k, it.i) > 10 || d[1].includes('NO_FRESH_DATA'), sel = it.r > R, r = it.r;
+    const cls = `car ${a.cls}${stale ? ' stale' : ''}${sel ? ' sel' : ''}${highlight && d[0] === highlight ? ' hl' : ''}`;
+    let node = carNodes.get(it.i);
+    if (!node) { node = {g: el('g', {class: 'veh'}, L.cars), key: ''}; carNodes.set(it.i, node); }
+    const key = `${a.sq}|${r}|${recentCars[k].has(it.i)}|${it.head ? Math.round(Math.atan2(it.g.uy, it.g.ux) * 100) : ''}`;
+    if (key !== node.key) { // rebuild the shape only when its geometry changes; position and colour animate
+      clear(node.g); node.key = key;
+      if (recentCars[k].has(it.i)) el('circle', {cx: 0, cy: 0, r: sel ? 9.5 : 4.9, class: 'chg'}, node.g);
+      node.shape = a.sq ? el('rect', {x: -r, y: -r, width: 2 * r, height: 2 * r, rx: sel ? 2 : 1}, node.g) : el('circle', {cx: 0, cy: 0, r}, node.g);
+      if (it.head) { const ux = it.g.ux, uy = it.g.uy, nx = it.g.nx, ny = it.g.ny, c = 7.5, s = 3;
+        el('path', {class: 'head', d: `M${(ux * (c + s)).toFixed(1)},${(uy * (c + s)).toFixed(1)}L${(ux * (c - s * .7) + nx * s * .75).toFixed(1)},${(uy * (c - s * .7) + ny * s * .75).toFixed(1)}L${(ux * (c - s * .7) - nx * s * .75).toFixed(1)},${(uy * (c - s * .7) - ny * s * .75).toFixed(1)}Z`}, node.g); }
+    }
+    node.shape.setAttribute('class', cls);
+    const moved = node.x !== undefined && Math.hypot(node.x - it.x, node.y - it.y) > 60; // jumps (new segment far away) are not animated
+    node.g.style.transitionDuration = (animMs && !moved && node.visible ? animMs : 0) + 'ms';
+    node.g.style.transform = `translate(${it.x.toFixed(2)}px, ${it.y.toFixed(2)}px)`;
+    node.g.style.display = ''; node.visible = true; node.x = it.x; node.y = it.y; seen.add(it.i);
+    carPos.push({i: it.i, x: it.x, y: it.y, si: it.si});
+  }
+  for (const [i, node] of carNodes) if (!seen.has(i)) { node.g.style.display = 'none'; node.visible = false; }
+  // selected car on top
+  const selNode = carNodes.get(vehIdx[selected]); if (selNode && selNode.visible && L.cars.lastChild !== selNode.g) L.cars.append(selNode.g);
+  // connectors to safe stops and the selected route
+  const si = vehIdx[selected];
+  for (let i = 0; i < NV; i++) {
+    const d = decision(k, i); if (d[0] !== 'S') continue;
+    const cp = carPos.find(c => c.i === i), sp = stopEls.find(s => s.st.id === d[5]); if (!cp || !sp) continue;
+    el('path', {d: `M${cp.x.toFixed(1)},${cp.y.toFixed(1)}L${sp.p.x.toFixed(1)},${sp.p.y.toFixed(1)}`, class: 'conn' + (i === si ? ' sel' : '')}, L.conn);
+  }
+  const ds = decision(k, si);
+  if (ds[0] === 'R' && ds[4] >= 0) {
+    const pos = posOf(k, si), route = D.routes[ds[4]], pts = [];
+    if (pos) { const g = geo[pos.si], c = carPos.find(x => x.i === si); pts.push(g.at(c ? Math.max(0, Math.min(g.L, (pos.off / segs[pos.si].length) * g.L)) : 0, LANE), g.at(g.L, LANE)); }
+    for (const r of route) { const g = geo[r]; pts.push(g.at(0, LANE), g.at(g.L, LANE)); }
+    el('path', {d: 'M' + pts.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join('L'), class: 'route-line'}, L.route);
+    for (const r of route) arrowAt(geo[r], geo[r].L / 2, LANE, 'route-arrow', 6.5, L.route);
+  }
+}
+function renderStops(k) {
+  const load = stopLoad(k);
+  for (const s of stopEls) { const n = load[s.st.id] || 0; s.grp.setAttribute('class', 'stopm' + (n >= s.st.capacity ? ' full' : n ? ' used' : '')); s.load.textContent = n ? `${n}/${s.st.capacity}` : ''; }
+}
+function sourceSpot(src) {
+  if (src.type === 'ROAD_DETECTOR' || src.type === 'VIDEO_ANALYTICS') { const si = segIdx[src.coverage]; return si == null ? null : geo[si].at(geo[si].L * .5, 0); }
+  if (src.type === 'RSU') { const zs = segs.map((s, i) => [s, i]).filter(([s]) => s.zone === src.coverage); if (!zs.length) return null; const [, si] = zs[Math.floor(zs.length / 2)]; return geo[si].at(geo[si].L * .5, 0); }
+  if (src.type === 'WEATHER') { const st = D.stations.find(x => x.id === src.id); return st ? P(nodeById[st.node]) : null; }
+  return null;
+}
+let faultSpots = [];
+function renderFaults(k) {
+  clear(L.faults); faultSpots = [];
+  const m = srcAt(k); let dt = null;
+  for (const [i, v] of m) {
+    const src = D.sources[i];
+    if (src.type === 'DIGITAL_TWIN') { dt = {src, v}; continue; }
+    const p = sourceSpot(src); if (!p) continue;
+    const g = el('g', {class: 'fault ' + v.st}, L.faults);
+    el('path', {d: `M${p.x},${p.y - 7.5}L${p.x + 7.5},${p.y}L${p.x},${p.y + 7.5}L${p.x - 7.5},${p.y}Z`}, g);
+    el('text', {x: p.x, y: p.y + .5, class: 'mark'}, g).textContent = v.st === 'F' ? '×' : '!';
+    faultSpots.push({i, v, x: p.x, y: p.y});
+  }
+  const chip = $('dt-chip');
+  if (dt) { chip.style.display = 'block'; chip.replaceChildren(h('b', null, `${dt.src.id} (цифровой двойник): ${SRC_STATUS[dt.v.st]}`), document.createTextNode(` — ${faultsOf(dt.v.mask).map(f => FAULT_RU[f]).join(', ')}, доверие ${num(dt.v.trust, 2)}`)); }
+  else chip.style.display = 'none';
+}
+
+/* ---------- labels with collision avoidance ---------- */
+function renderLabels(k) {
+  clear(L.labels);
+  const taken = [...hubRects.map(r => ({x: r.x, y: r.y, w: r.w, h: r.h})), ...staticRects];
+  const hit = b => b.x < 4 || b.y < 4 || b.x + b.w > 1096 || b.y + b.h > 476 || taken.some(t => b.x < t.x + t.w + 3 && b.x + b.w + 3 > t.x && b.y < t.y + t.h + 3 && b.y + b.h + 3 > t.y);
+  const carPts = []; carPos.forEach(c => carPts.push(c.x, c.y));
+  const markPts = []; stopEls.forEach(s => markPts.push(s.p.x, s.p.y)); faultSpots.forEach(f => markPts.push(f.x, f.y));
+  const segHits = (x1, y1, x2, y2, r) => { for (let t = 0; t <= 1; t += .08) { const x = x1 + (x2 - x1) * t, y = y1 + (y2 - y1) * t; if (x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h) return true; } return false; };
+  function tag(anchor, parts, prefer, cls, keyCls, keySq) {
+    const g = el('g', {class: 'tag ' + (cls || '')}, L.labels), line = el('line', {}, g), rect = el('rect', {rx: 6}, g);
+    const text = el('text', {}, g); text.textContent = parts;
+    const tw = text.getComputedTextLength(), pad = keyCls ? 22 : 9, w = tw + pad + 9, hh = 21;
+    // candidate boxes: preferred offsets first, then a ring of directions at growing distances; the box extends away from the anchor
+    const cands = [...prefer.map(([dx, dy]) => [dx, dy, 0])];
+    for (const rad of [30, 46, 64, 86]) for (let a = 0; a < 16; a++) { const ang = a * Math.PI / 8; cands.push([Math.cos(ang) * rad, Math.sin(ang) * rad, 1]); }
+    let best = null;
+    for (const [dx, dy, extra] of cands) {
+      const x = anchor.x + dx - (Math.abs(dx) < 1 ? w / 2 : dx < 0 ? w : 0), y = anchor.y + dy - hh / 2, b = {x, y, w, h: hh};
+      if (hit(b)) continue;
+      const ex = Math.max(x, Math.min(anchor.x, x + w)), ey = Math.max(y, Math.min(anchor.y, y + hh));
+      const leaderHits = taken.filter(t => segHits(anchor.x, anchor.y, ex, ey, t)).length;
+      const score = countIn(b, carPts, 3) * 6 + countIn(b, bandPts, 0) * .35 + countIn(b, markPts, 4) * 5 + leaderHits * 8 + Math.hypot(ex - anchor.x, ey - anchor.y) * .03 + extra * .5;
+      if (!best || score < best.score) best = {score, b};
+    }
+    if (best) {
+      const b = best.b, x = b.x, y = b.y;
+      taken.push(b);
+      rect.setAttribute('x', x); rect.setAttribute('y', y); rect.setAttribute('width', w); rect.setAttribute('height', hh);
+      text.setAttribute('x', x + pad); text.setAttribute('y', y + hh / 2 + .5);
+      const ex = Math.max(x, Math.min(anchor.x, x + w)), ey = Math.max(y, Math.min(anchor.y, y + hh));
+      line.setAttribute('x1', anchor.x); line.setAttribute('y1', anchor.y); line.setAttribute('x2', ex); line.setAttribute('y2', ey);
+      if (keyCls) { const r = 4.5; if (keySq) el('rect', {x: x + 8, y: y + hh / 2 - r, width: 2 * r, height: 2 * r, rx: 1.5, class: 'k car ' + keyCls}, g); else el('circle', {cx: x + 8 + r, cy: y + hh / 2, r, class: 'k car ' + keyCls}, g); }
+      return true;
+    }
+    g.remove(); return false;
+  }
+  const around = [[0, -34], [0, 34], [28, -30], [-28, -30], [28, 30], [-28, 30], [0, -58], [0, 58], [60, -44], [-60, -44], [60, 44], [-60, 44], [0, -82], [0, 82]];
+  // chapter focus vehicles and the selected one
+  const ch = chapters[actOf(k)], focus = [...new Set([selected, ...(ch.focus || [])])];
+  for (const id of focus) {
+    const i = vehIdx[id], c = carPos.find(x => x.i === i); if (!c) continue;
+    const d = decision(k, i), a = ACT[d[0]], v = D.vehicles[i];
+    let text = `${id} · ${a.ru.toLowerCase()}`;
+    if (ch.labels === 'convoy' && ch.focus.includes(id)) { const same = D.vehicles.filter(x => x.profile === v.profile).length; text = `колонна ${v.profile} · ${cars(same)} → ${d[8]}`; }
+    if (d[0] === 'L' && d[7]) text += ` до ${d[7]} км/ч`;
+    const g = geo[c.si], side = [[g.nx * 34, g.ny * 34], [g.nx * 56, g.ny * 56], [-g.nx * 40, -g.ny * 40]].map(([x, y]) => [Math.round(x), Math.round(y)]);
+    tag(c, text, [...side, ...around], '', a.cls, a.sq);
+  }
+  // direct labels on abnormal roads (worst first, at most five)
+  const roads = S.roads[k], abn = [];
+  for (let si = 0; si < segs.length; si++) if (roads[si] !== 'O') abn.push(si);
+  abn.sort((x, y) => ROAD_PRI[roads[y]] - ROAD_PRI[roads[x]] || x - y);
+  for (const si of abn.slice(0, 5)) {
+    const g = geo[si], p = g.at(g.L * .5, LANE);
+    tag(p, `${segs[si].id} · ${ROAD[roads[si]].ru}`, [[Math.round(-g.nx * 30), Math.round(-g.ny * 30)], [Math.round(g.nx * 38), Math.round(g.ny * 38)], ...around], 'road-tag');
+  }
+  if (rainTag) tag(rainTag, rainTag.text, [[0, 0], [0, -14], [90, 0], [-90, 0], [160, 0], [-160, 0], ...around], 'rain-tag');
+  // fault sources
+  for (const f of faultSpots.slice(0, 4)) { const src = D.sources[f.i]; tag(f, `${src.id} · ${faultsOf(f.v.mask).map(x => FAULT_RU[x]).join(', ') || SRC_STATUS[f.v.st]}`, [[0, -22], [0, 22], [24, -18], [-24, -18], ...around], 'road-tag'); }
+}
+
+/* ---------- story, KPI ---------- */
+function liveSummary(k) {
+  const c = counts[k], parts = [];
+  if (c.H) parts.push(`${cars(c.H)} ${c.H % 10 === 1 && c.H % 100 !== 11 ? 'ждёт' : 'ждут'} на месте`);
+  const one = n => n % 10 === 1 && n % 100 !== 11;
+  if (c.L) parts.push(`${c.L} — ${one(c.L) ? 'снижает' : 'снижают'} скорость`);
+  if (c.R) parts.push(`${c.R} — на новом маршруте`);
+  if (c.S) parts.push(`${c.S} — ${one(c.S) ? 'едет на площадку' : 'едут на площадки'}`);
+  const roads = S.roads[k], by = {P: [], C: [], X: [], U: []};
+  for (let si = 0; si < segs.length; si++) if (by[roads[si]]) by[roads[si]].push(segs[si].id);
+  const r = [];
+  if (by.X.length) r.push(`закрыто: ${by.X.join(', ')}`); if (by.P.length) r.push(`частично перекрыто: ${by.P.join(', ')}`); if (by.C.length) r.push(`заторы: ${by.C.join(', ')}`);
+  return `Сейчас ${parts.length ? parts.join(', ') : `все ${cars(c.C)} едут без ограничений`}. ${r.length ? 'На дорогах — ' + r.join('; ') + '.' : 'Все дороги открыты.'}`;
+}
+function renderClock(k) { $('tl-clock').textContent = clock(k); $('tl-step').textContent = `${k + 1} из ${N}`; }
+function tween(node, to, fmt) {
+  const from = node._v ?? to; node._v = to; cancelAnimationFrame(node._raf);
+  const dur = Math.min(animMs, 600);
+  if (!dur || from === to) { node.textContent = fmt(to); return; }
+  const t0 = performance.now();
+  const tick = now => { const f = Math.min(1, (now - t0) / dur); node.textContent = fmt(Math.round(from + (to - from) * f)); if (f < 1) node._raf = requestAnimationFrame(tick); };
+  node._raf = requestAnimationFrame(tick);
+}
+function renderKpis(k) {
+  const c = counts[k];
+  for (const a of ['C', 'L', 'R', 'H', 'S']) tween(kpiEls[a], c[a], v => String(v));
+  const used = Object.values(stopLoad(k)).reduce((x, y) => x + y, 0);
+  tween(kpiEls.stops.v, used, v => `${v} из ${totalStopCap}`); kpiEls.stops.i.style.width = (100 * used / totalStopCap) + '%';
+  tween(kpiEls.remote.v, c.remote, v => `${v} из ${REMOTE_LIMIT}`); kpiEls.remote.i.style.width = (100 * c.remote / REMOTE_LIMIT) + '%';
+}
+
+/* ---------- side card ---------- */
+function explain(k, i) {
+  const d = decision(k, i), v = D.vehicles[i], pos = posOf(k, i), seg = pos ? segs[pos.si].id : '—';
+  const road = pos ? ROAD[S.roads[k][pos.si]].ru : 'нет данных', codes = d[3].map(c => ODD_CODE_RU[c] || c).join(', ');
+  const remote = d[6] ? ' Подключена сессия дистанционной поддержки.' : '';
+  switch (d[0]) {
+    case 'C': return `Условия ODD профиля ${v.profile} соблюдены, дорога ${seg}: ${road} — машина продолжает движение к ${d[8]}.` + remote;
+    case 'L': return `На ${seg} — ${road}. Условия ODD соблюдены, поэтому машина едет дальше, но не быстрее ${d[7]} км/ч.` + remote;
+    case 'R': return `На ${seg} — ${road}. У развилки контроллер пересчитал путь до ${d[8]} с учётом заторов, массы и ODD и выдал полный маршрут.` + remote;
+    case 'S': return `Нарушено ODD (${codes}): ехать нельзя. Площадка ${d[5]} в пределах ${D.meta.stopReachSec / 60} минут пути, масса и свободные места проверены — машина направлена туда.` + remote;
+    case 'H':
+      if (d[1].includes('NO_FRESH_DATA')) return `Свежей телеметрии нет уже ${ageOf(k, i)} с. Без данных о машине безопасно только удерживать её.`;
+      if (d[1].includes('LOW_CONFIDENCE') && d[2] !== 'V') return 'Нарушение ODD только что закончилось. Контроллер выжидает 10 секунд, чтобы решение не «мигало».';
+      if (d[1].includes('LOW_CONFIDENCE')) return `Бортовая система сообщает о деградации (${d[10] || 'нет данных'}) — машина удерживается до подтверждения.`;
+      if (d[1].includes('ROUTE_HUB_CAPACITY')) return `Терминал ${d[8]} не принимает машины — удержание перед въездом.`;
+      if (d[3].length) return `Нарушено ODD (${codes}): ехать нельзя. Допустимой площадки в пределах ${D.meta.stopReachSec / 60} минут пути нет — машина ждёт на месте.` + remote;
+      return `Участок ${seg}: ${road} — удержание до прояснения обстановки.` + remote;
+    case 'N': return 'Машина вне активного движения.';
+  }
+  return '';
+}
+function renderChain(k, i) {
+  const d = decision(k, i), pos = posOf(k, i), box = $('v-chain'); box.replaceChildren();
+  const step = (n, title, cls, text) => { const c = h('div', 'c4 ' + cls); c.title = `${n}. ${title}: ${text}`; c.append(h('small', null, `${n} ${title}`), h('b', null, text)); box.append(c); };
+  const stale = ageOf(k, i) > 10 || d[1].includes('NO_FRESH_DATA');
+  step(1, 'Данные', stale ? 'bad' : 'ok', stale ? `✕ нет ${ageOf(k, i)} с` : '✓ свежие');
+  const shortOdd = {VISIBILITY: 'видимость', RAIN: 'осадки', GNSS: 'GNSS', V2X: 'V2X', STRUCTURE: 'сооруж.', WEIGHT_LIMIT: 'масса', MAP_AGE: 'карта'};
+  step(2, 'ODD', d[2] === 'V' ? 'bad' : d[2] === 'U' ? 'na' : 'ok', d[2] === 'V' ? '✕ ' + (d[3].map(c => shortOdd[c] || c).join(', ') || 'автоматика') : d[2] === 'U' ? '— нет данных' : '✓ в норме');
+  const r = pos ? S.roads[k][pos.si] : null;
+  step(3, 'Дорога', !r ? 'na' : r === 'O' ? 'ok' : r === 'C' || r === 'P' ? 'warn' : 'bad', !r ? '— нет позиции' : r === 'O' ? '✓ открыта' : r === 'C' ? '! затор' : r === 'P' ? '! перекрытие' : r === 'X' ? '✕ закрыта' : '✕ нет данных');
+  const physical = d[3].some(c => c !== 'V2X' && c !== 'GNSS');
+  step(4, 'Ресурсы', d[0] === 'S' || d[0] === 'R' || d[6] ? 'ok' : d[0] === 'H' && physical ? 'bad' : 'na',
+       d[0] === 'S' ? `✓ ${d[5]}` : d[0] === 'R' ? '✓ маршрут' : d[6] ? '✓ оператор' : d[0] === 'H' && physical ? '✕ далеко' : '— не нужны');
+}
+function renderFeed(k) {
+  const box = $('feed'); box.replaceChildren(h('span', 'ttl', 'За минуту:'));
+  // roads, sources and groups of cars first; single-car switches only if there is room
+  const all = [];
+  for (let j = k; j >= Math.max(1, k - 11); j--) for (const c of changes[j]) all.push({j, c, w: c.kind !== 'car' || c.ids.length >= 3 ? 2 : 1});
+  const items = all.sort((a, b) => b.w - a.w || b.j - a.j).slice(0, 4);
+  if (!items.length) { box.append(h('span', 'muted', 'изменений нет — решения и состояния прежние')); return; }
+  for (const {j, c} of items) { const e = h('span', 'ev' + (j === k ? ' now' : '')), t = h('time', null, clock(j)); e.title = `${clock(j)} · ${c.text}`; e.append(t, document.createTextNode(c.text)); box.append(e); }
+}
+function renderSide(k) {
+  const i = vehIdx[selected], v = D.vehicles[i], d = decision(k, i), a = ACT[d[0]], pos = posOf(k, i), prof = D.profiles[v.profile];
+  $('veh').value = selected; $('v-id').textContent = v.id;
+  const pill = $('v-pill'), txt = a.ru + (d[0] === 'L' && d[7] ? ` до ${d[7]} км/ч` : ''); pill.title = txt; pill.replaceChildren(h('i', 'key ' + a.cls + (a.sq ? ' sq' : '')), h('span', 'txt', txt), h('code', null, a.code));
+  const chips = $('v-chips'); chips.replaceChildren();
+  const cargoRu = {GENERAL: 'общий груз', FOOD: 'продукты', MEDICAL: 'медикаменты', ELECTRONICS: 'электроника', INDUSTRIAL: 'промышленный груз'};
+  [`профиль ${v.profile}`, `${num(v.mass)} т`, `${cargoRu[v.cargo] || v.cargo}, приоритет ${v.priority}`, `→ ${d[8]}`].forEach(t => chips.append(h('span', 'chip', t)));
+  renderChain(k, i);
+
+  // ODD check table: controller codes are authoritative, numbers show what it used
+  const tb = $('v-odd'); tb.replaceChildren(); { const cg = document.createElement('colgroup'); ['c1', 'c2', 'c3', 'c4'].forEach(c => { const x = document.createElement('col'); x.className = c; cg.append(x); }); tb.append(cg); }
+  $('odd-title').textContent = `Проверка ODD · ${v.profile} · ` + (d[2] === 'V' ? 'нарушено' : d[2] === 'U' ? 'нет данных' : 'в норме');
+  const w = pos ? condFor(k, pos.si) : null, seg = pos ? segs[pos.si] : null, codes = new Set(d[3]);
+  const row = (name, fact, norm, state) => { const tr = document.createElement('tr'); if (state === 'bad') tr.className = 'bad'; const st = h('span', 'st ' + state, state === 'ok' ? '✓ норма' : state === 'bad' ? '✕ нарушено' : '— нет'); [name, fact, norm].forEach(t => { const c = h('td', null, t); c.title = t; tr.append(c); }); const td = h('td'); td.append(st); tr.append(td); tb.append(tr); };
+  const judge = (code, ok) => codes.has(code) ? 'bad' : ok == null ? 'na' : ok ? 'ok' : 'bad';
+  row('Видимость', w ? `${w[0]} м` : '—', `от ${prof.min_visibility_m} м`, judge('VISIBILITY', w ? w[0] >= prof.min_visibility_m : null));
+  row('Осадки', w ? `уровень ${w[1]}` : '—', `до ${prof.max_rain_level}`, judge('RAIN', w ? w[1] <= prof.max_rain_level : null));
+  row('Боковой ветер', w ? `${num(w[2])} м/с` : '—', `до ${prof.max_crosswind_mps} м/с`, w ? (w[2] <= prof.max_crosswind_mps ? 'ok' : 'bad') : 'na');
+  row('Точность GNSS', pos ? num(S.gnss[k][i] / 100, 2) : '—', `от ${num(prof.min_gnss_quality, 2)}`, judge('GNSS', pos ? S.gnss[k][i] / 100 >= prof.min_gnss_quality : null));
+  row('Возраст карты', pos ? `${num(S.mage[k][i] / 10)} мин` : '—', `до ${prof.max_map_age_min} мин`, judge('MAP_AGE', pos ? S.mage[k][i] / 10 <= prof.max_map_age_min : null));
+  if (prof.v2x_required) { const ok = seg ? S.v2x[k][zoneIdx[seg.zone]] === '1' : null; row('Связь V2X', seg ? (ok ? `${seg.zone}: есть` : `${seg.zone}: нет`) : '—', 'нужна', judge('V2X', ok)); }
+  else row('Связь V2X', '—', 'не нужна', 'ok');
+  row('Сооружение', seg ? STRUCT_SHORT[seg.structure] : '—', prof.allowed_structures.length === 3 ? 'любое' : !prof.allowed_structures.includes('tunnel') && prof.allowed_structures.length === 2 ? 'не тоннель' : prof.allowed_structures.map(x => STRUCT_SHORT[x]).join(', '), judge('STRUCTURE', seg ? prof.allowed_structures.includes(seg.structure) : null));
+  row('Масса', `${num(v.mass)} т`, seg ? `до ${num(seg.weight, 0)} т` : '—', judge('WEIGHT_LIMIT', seg ? v.mass <= seg.weight : null));
+  row('Автоматика', d[10] || '—', 'AUTO', d[10] ? (d[10] === 'AUTO' ? 'ok' : 'bad') : 'na');
+
+  // road / route / stop block
+  const box = $('v-road'); box.replaceChildren(h('h5', null, d[0] === 'R' ? 'Маршрут' : d[0] === 'S' ? 'Площадка' : 'Дорога'));
+  if (pos) {
+    const si = pos.si, info = roadInfo(k, si), p = h('div', 'route-chips');
+    p.append(h('span', 'seg', segs[si].id), document.createTextNode(`${S.spd[k][i]} км/ч · ${GROUP_RU[segs[si].group]}, ${geo[si].dir}: ${ROAD[S.roads[k][si]].ru}` + (info ? `, уверенность ${num(info[2], 2)}` : '')));
+    box.append(p);
+    if (d[0] === 'R') { const r = h('div', 'route-chips'); r.style.marginTop = '6px'; r.append(document.createTextNode('Новый путь:')); for (const x of D.routes[d[4]] || []) r.append(h('span', 'seg', segs[x].id)); r.append(document.createTextNode('→ ' + d[8])); box.append(r); }
+    if (d[0] === 'S') { const st = stopById[d[5]], n = stopLoad(k)[d[5]] || 0; box.append(h('div', 'muted', `${d[5]} на участке ${st.segment}: занято ${n} из ${st.capacity}, допустимая масса до ${num(st.mass, 0)} т.`)); }
+    if (d[0] === 'H' && d[9]) box.append(h('div', 'muted', d[9][0] === 'far' ? `Ближайшая допустимая площадка: ${d[9][1]} · ≈${d[9][2]} мин пути · резерв до ${D.meta.stopReachSec / 60} мин` : d[9][0] === 'busy' ? `Площадка ${d[9][1]}: мест нет` : 'Допустимой площадки нет'));
+  } else box.append(h('div', 'muted', 'Позиция неизвестна.'));
+
+  const cbox = $('v-codes'); cbox.replaceChildren();
+  for (const c of d[1]) { const s = h('span', 'code', c); s.title = D.codeText[c] || ''; cbox.append(s); }
+  for (const c of d[3]) { const s = h('span', 'code', 'violation: ' + c); cbox.append(s); }
+  const first = d[1][0]; if (first && D.codeText[first]) cbox.append(h('span', 'desc', `${first} — ${D.codeText[first]}`));
+  renderHistory(k, i);
+}
+function renderHistory(k, i) {
+  const svg = $('history'), W = svg.clientWidth || 370, H = 34; svg.setAttribute('viewBox', `0 0 ${W} ${H}`); clear(svg);
+  const x = s => 1 + s / (N - 1) * (W - 2);
+  let start = 0;
+  for (let s = 1; s <= N; s++) {
+    if (s === N || decision(s, i)[0] !== decision(start, i)[0]) {
+      const a = ACT[decision(start, i)[0]], r = el('rect', {x: x(start), y: 8, width: Math.max(1, x(s - 1) - x(start) + (W - 2) / (N - 1)), height: 14, class: 'car ' + a.cls}, svg);
+      r.setAttribute('stroke-width', 0); el('title', {}, r).textContent = `${clock(start)}–${clock(s - 1)}: ${a.ru}`; start = s;
+    }
+  }
+  for (const c of chapters) el('line', {x1: x(c.index), y1: 4, x2: x(c.index), y2: 26, stroke: 'rgba(255,255,255,.25)'}, svg);
+  el('line', {x1: x(k), y1: 2, x2: x(k), y2: 30, stroke: '#fff', 'stroke-width': 2}, svg);
+}
+
+/* ---------- lower cards ---------- */
+function renderSources(k) {
+  const m = srcAt(k), box = $('sources'); box.replaceChildren();
+  const tally = {O: D.sources.length, D: 0, F: 0, U: 0}; for (const [, v] of m) { tally[v.st]++; tally.O--; }
+  $('src-count').textContent = `${D.sources.length} источников`;
+  const sum = h('div', 'src-sum'); sum.append(h('span', null, `В норме: ${tally.O}`), h('span', null, `Деградация: ${tally.D}`), h('span', null, `Отказ: ${tally.F}`), h('span', null, `Нет данных: ${tally.U}`)); box.append(sum);
+  const list = h('div', 'src-list'); box.append(list);
+  if (!m.size) { list.append(h('p', 'muted', 'Все источники в норме.')); return; }
+  for (const [i, v] of m) {
+    const src = D.sources[i], r = h('div', 'src-row'), st = h('span', 'status ' + v.st), ic = h('i', null, v.st === 'F' ? '×' : '!');
+    st.append(ic, document.createTextNode(SRC_STATUS[v.st]));
+    const who = h('div', 'who'); who.append(h('b', null, `${src.id} · ${SRC_TYPE_RU[src.type] || src.type}`));
+    const since = srcSince[k].get(i), ev = D.events.find(e => e.kind === 'fault' && e.source === src.id && e.start - 1 <= k && k <= e.end + 12);
+    let line = `${faultsOf(v.mask).map(f => FAULT_RU[f]).join(', ') || 'тип не определён'} · с ${clock(since)}`;
+    if (ev && ev.detected != null) line += ` · по разметке с ${clock(ev.start - 1)}, найдено через ${ev.delay} с`;
+    who.append(h('small', null, line));
+    const tr = h('div', 'trust'), bar = h('div', 'bar'), bi = h('i'); bi.style.width = (v.trust * 100) + '%'; bar.append(bi); tr.append(document.createTextNode(`доверие ${num(v.trust, 2)}`), bar);
+    r.append(st, who, tr); list.append(r);
+  }
+}
+function renderQuality(k) {
+  const box = $('quality'); box.replaceChildren();
+  if (!D.meta.hasLabels) { box.append(h('p', 'muted', `У сценария ${D.meta.scenario} нет эталонной разметки — сверка недоступна.`)); return; }
+  const [ro, so, oo, act] = S.check[k];
+  const q = (name, a, b) => { const r = h('div', 'qrow'), bar = h('div', 'bar'), i = h('i'); i.style.width = (b ? 100 * a / b : 0) + '%'; bar.append(i); r.append(h('span', null, name), bar, h('b', null, `${a} / ${b}`)); box.append(r); };
+  q('Дороги', ro, segs.length); q('Источники', so, D.sources.length); q('ODD машин', oo, act);
+  const t = D.totals, tot = h('div', 'qtot');
+  tot.textContent = `За весь час совпало с разметкой: дороги ${num(t.roads, 1)} %, источники ${num(t.sources, 1)} %, ODD ${num(t.odd, 1)} %. Критических эпизодов (машина вне ODD без защитного действия 3 шага подряд): ${t.unsafeEpisodes}.`;
+  box.append(tot, h('p', 'muted', 'Расхождения на карте — переключатель «Показать расхождения с разметкой».'));
+}
+function renderCarsTable(k) {
+  const c = counts[k];
+  $('cars-sum').textContent = ['C', 'L', 'R', 'H', 'S'].filter(a => c[a]).map(a => `${ACT[a].kpi}: ${c[a]}`).join(' · ');
+  if (!$('cars').open) return;
+  const order = {H: 0, S: 1, R: 2, L: 3, C: 4, N: 5}, rows = D.vehicles.map((v, i) => ({v, i, d: decision(k, i)})).sort((a, b) => order[a.d[0]] - order[b.d[0]] || a.i - b.i);
+  const tb = $('cars-table'); tb.replaceChildren();
+  const hd = document.createElement('tr'); ['Машина', 'Профиль', 'Участок', 'Решение', 'Причина'].forEach(t => hd.append(h('th', null, t))); tb.append(hd);
+  for (const {v, i, d} of rows) {
+    const tr = document.createElement('tr'); if (v.id === selected) tr.className = 'on';
+    const pos = posOf(k, i), a = ACT[d[0]], td = h('td'); td.append(h('i', 'key ' + a.cls + (a.sq ? ' sq' : '')), document.createTextNode(' ' + a.ru));
+    const reason = d[3].length ? 'ODD: ' + d[3].map(x => ODD_CODE_RU[x]).join(', ') : (D.codeText[d[1][0]] || d[1][0] || '');
+    tr.append(h('td', null, v.id), h('td', null, v.profile), h('td', null, pos ? segs[pos.si].id : '—'), td, h('td', null, reason));
+    tr.addEventListener('click', () => { selected = v.id; userPicked = true; render(); });
+    tb.append(tr);
+  }
+}
+$('cars').addEventListener('toggle', () => renderCarsTable(cur));
+$('show-miss').addEventListener('change', () => renderRoads(cur));
+
+/* ---------- timeline ---------- */
+const tl = $('tl'); let GUT = 190;
+let tlW = 0, tlX = s => 0;
+const incidents = D.events.filter(e => e.kind === 'incident'), faults = D.events.filter(e => e.kind === 'fault');
+const ROW = {pins: 12, area: 30, areaH: 58, axis: 100, ev: 118, lane: 15};
+const tlH = () => ROW.ev + 16 + Math.max(2, incidents.length + faults.length) * ROW.lane + (faults.length ? 18 : 0) + 22;
+function drawTimeline() {
+  tlW = $('tl-wrap').clientWidth - 20; const H = tlH();
+  tl.setAttribute('viewBox', `0 0 ${tlW} ${H}`); tl.setAttribute('height', H); tl.setAttribute('aria-valuemax', N); clear(tl);
+  { const probe = el('text', {class: 'tl-lbl'}, tl); let mw = 0;
+    for (const e of D.events) { probe.textContent = e.label; mw = Math.max(mw, probe.getComputedTextLength()); }
+    probe.setAttribute('class', 'tl-lbl h');
+    for (const t of ['ОТКАЗЫ ИСТОЧНИКОВ (ПО РАЗМЕТКЕ)', `Решения по машинам (${NV})`]) { probe.textContent = t; mw = Math.max(mw, probe.getComputedTextLength()); }
+    probe.remove(); GUT = Math.ceil(mw) + 24; }
+  tlX = s => GUT + s / (N - 1) * (tlW - GUT - 10);
+  // stacked area of actions
+  drawArea(tl, tlX, ROW.area, ROW.areaH);
+  const lbl = (x, yy, t, cls, anchor = 'end') => { const n = el('text', {x, y: yy, class: cls, 'text-anchor': anchor, 'dominant-baseline': 'central'}, tl); n.textContent = t; return n; };
+  lbl(GUT - 10, ROW.area + 12, `Решения по машинам (${NV})`, 'tl-lbl');
+  lbl(GUT - 10, ROW.area + 28, 'серое — едут без ограничений', 'tl-lbl h');
+  // axis
+  for (let m = 0; m <= Math.floor(N * D.meta.dt / 60); m += 5) { const k = Math.min(N - 1, Math.round((m * 60 - 5) / D.meta.dt)); const x = tlX(Math.max(0, k)); el('line', {x1: x, y1: ROW.area, x2: x, y2: H - 18, class: 'tl-grid'}, tl); lbl(x, ROW.axis + 4, clock(Math.max(0, k)).slice(0, 5), 'tl-axis', k >= N - 1 ? 'end' : 'middle'); }
+  // event lanes
+  let yy = ROW.ev;
+  if (!D.events.length) { lbl(GUT - 10, yy, 'СОБЫТИЯ', 'tl-lbl h'); lbl(GUT + 4, yy + 18, D.meta.hasLabels ? 'В разметке сценария событий нет.' : 'Разметки нет — события недоступны.', 'tl-lbl', 'start'); }
+  else { lbl(GUT - 10, yy, 'СОБЫТИЯ (ПО РАЗМЕТКЕ)', 'tl-lbl h'); } yy += 14;
+  const lane = (e, yy) => {
+    lbl(GUT - 10, yy + 5, e.label, 'tl-lbl');
+    const r = el('rect', {x: tlX(e.start - 1), y: yy, width: Math.max(2, tlX(e.end - 1) - tlX(e.start - 1)), height: 10, rx: 3, class: 'tl-bar' + (e.kind === 'fault' ? ' fault' : '')}, tl);
+    el('title', {}, r).textContent = `${e.label}: ${clock(e.start - 1)}–${clock(e.end - 1)} по разметке` + (e.detected != null ? `; контроллер отреагировал в ${clock(e.detected - 1)} (через ${e.delay} с${e.onset !== e.start ? ' после появления затора' : ''})` : '; в данных контроллера не проявилось');
+    if (e.detected != null) { const x = tlX(e.detected - 1); el('path', {d: `M${x},${yy - 1}L${x + 5},${yy + 5}L${x},${yy + 11}L${x - 5},${yy + 5}Z`, class: 'tl-det'}, tl); }
+  };
+  incidents.forEach(e => { lane(e, yy); yy += ROW.lane; });
+  if (faults.length) { yy += 4; lbl(GUT - 10, yy, 'ОТКАЗЫ ИСТОЧНИКОВ (ПО РАЗМЕТКЕ)', 'tl-lbl h'); yy += 14; }
+  faults.forEach(e => { lane(e, yy); yy += ROW.lane; });
+  if (D.events.length) lbl(tlW - 10, H - 8, '◆ — момент, когда контроллер это заметил', 'tl-lbl h', 'end');
+  // chapter pins
+  let lastX = -1e9, lastUp = false;
+  chapters.forEach((c, i) => { const g = el('g', {class: 'tl-pin', 'data-i': i}, tl), x = tlX(c.index), up = x - lastX < 19 ? !lastUp : false, cy = up ? ROW.pins - 6 : ROW.pins + 3; lastX = x; lastUp = up; el('line', {x1: x, y1: cy, x2: x, y2: ROW.area, class: 'tl-grid'}, g); el('circle', {cx: x, cy, r: 8.5}, g); el('text', {x, y: cy + .5}, g).textContent = i + 1; el('title', {}, g).textContent = `${i + 1}. ${c.title} — ${clock(c.index)}`; });
+  el('line', {id: 'tl-play', x1: 0, y1: 2, x2: 0, y2: H - 18, class: 'tl-play'}, tl);
+  movePlayhead(cur);
+}
+const mini = $('mini'); let miniW = 0;
+const MX = s => 8 + s / (N - 1) * (miniW - 16);
+function drawArea(svg, X, top, height) {
+  const y = v => top + height - v / NV * height, base = new Array(N).fill(0);
+  for (const a of ACT_ORDER) {
+    const tops = counts.map((c, k) => base[k] + c[a]); if (tops.every((t, k) => t === base[k])) continue;
+    let d = `M${X(0)},${y(base[0])}`;
+    for (let k = 0; k < N; k++) d += `L${X(k).toFixed(1)},${y(tops[k]).toFixed(1)}`;
+    for (let k = N - 1; k >= 0; k--) d += `L${X(k).toFixed(1)},${y(base[k]).toFixed(1)}`;
+    el('path', {d: d + 'Z', class: 'car ' + ACT[a].cls, 'stroke-width': 0, opacity: a === 'C' ? .45 : .95}, svg);
+    tops.forEach((t, k) => base[k] = t);
+  }
+}
+function drawMini() {
+  miniW = $('mini-wrap').clientWidth; const H = 64; mini.setAttribute('viewBox', `0 0 ${miniW} ${H}`); mini.setAttribute('aria-valuemax', N); clear(mini);
+  drawArea(mini, MX, 32, 24);
+  for (let k = 1; k < N; k++) if (changes[k].some(c => c.kind !== 'car' || c.ids.length > 2)) el('line', {x1: MX(k), y1: 58, x2: MX(k), y2: 63, class: 'mtick'}, mini);
+  const rowEnd = [-1e9, -1e9];
+  chapters.forEach((c, i) => {
+    const x = MX(c.index), g = el('g', {class: 'mpin', 'data-i': i}, mini), t = el('text', {x, y: 0, 'text-anchor': 'middle', class: 'mpin-t'}, g);
+    const fit = text => { t.textContent = text; const w = t.getComputedTextLength(), tx = Math.max(w / 2 + 2, Math.min(miniW - w / 2 - 2, x));
+      const row = [0, 1].find(r => rowEnd[r] < tx - w / 2 - 6); return row == null ? null : {w, tx, row}; };
+    const pos = fit(`${i + 1} ${c.short}`) || fit(`${i + 1}`) || (() => { const w = t.getComputedTextLength(); return {w, tx: x, row: rowEnd[0] <= rowEnd[1] ? 0 : 1}; })();
+    const {w, tx, row} = pos, ty = row ? 23 : 10; rowEnd[row] = tx + w / 2;
+    t.setAttribute('x', tx); t.setAttribute('y', ty); el('line', {x1: x, y1: ty + 4, x2: x, y2: 56, class: 'mpin-line'}, g);
+    el('title', {}, g).textContent = `${i + 1}. ${c.title} — ${clock(c.index)}`;
+  });
+  el('line', {id: 'mini-play', x1: 0, y1: 28, x2: 0, y2: 64, class: 'tl-play'}, mini);
+}
+function miniStep(ev) { const r = mini.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * miniW; return Math.max(0, Math.min(N - 1, Math.round((x - 8) / (miniW - 16) * (N - 1)))); }
+let miniDrag = false;
+mini.addEventListener('pointerdown', ev => {
+  const pin = ev.target.closest && ev.target.closest('.mpin');
+  if (pin && ev.target.classList.contains('mpin-t')) { jumpChapter(Number(pin.dataset.i)); return; }
+  miniDrag = true; mini.setPointerCapture(ev.pointerId); stop(); go(miniStep(ev));
+});
+mini.addEventListener('pointermove', ev => {
+  if (miniDrag) { go(miniStep(ev)); return; }
+  const k = miniStep(ev), c = counts[k], ch = chapters[actOf(k)];
+  showTip(ev, [['t', `${clock(k)} · шаг ${k + 1}`], ...['C', 'L', 'R', 'H', 'S'].filter(a => c[a]).map(a => ['r', ACT[a].kpi, c[a]]), ...changes[k].slice(0, 3).map(x => ['x', '• ' + x.text])]);
+});
+mini.addEventListener('pointerup', () => { miniDrag = false; });
+mini.addEventListener('pointerleave', hideTip);
+function movePlayhead(k) {
+  { const p = $('mini-play'); if (p) { const x = MX(k); p.setAttribute('x1', x); p.setAttribute('x2', x); } mini.setAttribute('aria-valuenow', k + 1); mini.setAttribute('aria-valuetext', `${clock(k)}, шаг ${k + 1}`); const a = actOf(k); mini.querySelectorAll('.mpin').forEach((g, i) => g.classList.toggle('on', i === a)); }
+  const p = $('tl-play'); if (!p) return; const x = tlX(k); p.setAttribute('x1', x); p.setAttribute('x2', x);
+  tl.setAttribute('aria-valuenow', k + 1); tl.setAttribute('aria-valuetext', `${clock(k)}, шаг ${k + 1}`);
+  const a = actOf(k); tl.querySelectorAll('.tl-pin').forEach((g, i) => g.classList.toggle('on', i === a));
+}
+function stepFromEvent(ev) { const r = tl.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * tlW; return Math.max(0, Math.min(N - 1, Math.round((x - GUT) / (tlW - GUT - 10) * (N - 1)))); }
+let dragging = false;
+tl.addEventListener('pointerdown', ev => { dragging = true; tl.setPointerCapture(ev.pointerId); stop(); go(stepFromEvent(ev)); });
+tl.addEventListener('pointermove', ev => {
+  if (dragging) { go(stepFromEvent(ev)); return; }
+  const k = stepFromEvent(ev), c = counts[k], r = tl.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * tlW;
+  if (x < GUT) { hideTip(); return; }
+  showTip(ev, [['t', `${clock(k)} · шаг ${k + 1}`], ...['C', 'L', 'R', 'H', 'S'].filter(a => c[a]).map(a => ['r', ACT[a].kpi, c[a]])]);
+});
+tl.addEventListener('pointerup', () => { dragging = false; });
+tl.addEventListener('pointerleave', hideTip);
+
+/* ---------- chapters list ---------- */
+const chapBtns = chapters.map((c, i) => { const b = h('button'); b.type = 'button'; b.append(h('b', null, `${i + 1} · ${clock(c.index)}`), h('span', null, c.title)); b.addEventListener('click', () => jumpChapter(i)); $('chapters').append(b); return b; });
+function jumpChapter(i) { stop(); const c = chapters[i]; selected = c.select; userPicked = false; go(c.index); }
+$('prev-ch').addEventListener('click', () => { const a = actOf(cur); jumpChapter(chapters[a].index < cur ? a : Math.max(0, a - 1)); });
+$('next-ch').addEventListener('click', () => jumpChapter(Math.min(chapters.length - 1, actOf(cur) + 1)));
+
+/* ---------- playback ---------- */
+let animMs = 0;
+function animated(ms, fn) { animMs = ms; try { fn(); } finally { animMs = 0; } }
+function play() { if (timer) return stop(); if (cur >= N - 1) go(0); $('play').textContent = '⏸ Пауза'; timer = setInterval(playTick, 1000 / speed); playTick(); }
+function playTick() { if (cur >= N - 1) return stop(); animated(1000 / speed, () => go(cur + 1)); }
+function stop() { if (timer) clearInterval(timer); timer = null; $('play').textContent = '▶ Пуск'; }
+$('play').addEventListener('click', play);
+{ // log scale: fine steps at low speeds; ticks are clickable reference points
+  const MAX = 75, slider = $('speed'), toPos = m => Math.round(1000 * Math.log(m) / Math.log(MAX)), toMult = v => Math.max(1, Math.round(Math.exp(v / 1000 * Math.log(MAX))));
+  const TICKS = [[1, 'реальное время'], [5, 'подробный разбор'], [10, 'обычный показ'], [30, 'обзор сценария'], [75, 'быстрый просмотр']];
+  const dur = m => { const sec = N * D.meta.dt / m; return sec >= 90 ? `≈ ${Math.round(sec / 60)} мин` : `≈ ${Math.round(sec)} с`; };
+  const tickBtns = TICKS.map(([m, hint]) => { const b = h('button', null, `×${m}`); b.type = 'button'; b.style.left = (toPos(m) / 10) + '%'; b.title = `×${m} — ${hint}: весь сценарий ${dur(m)}`; b.addEventListener('click', () => setSpeed(m)); $('speed-ticks').append(b); return [m, b]; });
+  function setSpeed(m, fromSlider) {
+    speed = m / D.meta.dt; if (!fromSlider) slider.value = toPos(m);
+    $('speed-x').textContent = `×${m}`; $('speed-dur').textContent = `сценарий ${dur(m)}`;
+    slider.setAttribute('aria-valuetext', `×${m}, сценарий ${dur(m)}`);
+    tickBtns.forEach(([t, b]) => b.classList.toggle('on', t === m));
+    if (timer) { clearInterval(timer); timer = setInterval(playTick, 1000 / speed); } // keep playing, just at the new pace
+  }
+  slider.addEventListener('input', () => setSpeed(toMult(Number(slider.value)), true));
+  setSpeed(30);
+}
+window.addEventListener('keydown', ev => {
+  const t = ev.target instanceof Element ? ev.target : null;
+  if (t && t.matches('select,input,textarea')) return;
+  const big = ev.shiftKey ? 12 : 1;
+  if (ev.key === 'ArrowRight') { stop(); animated(big === 1 ? 250 : 0, () => go(Math.min(N - 1, cur + big))); ev.preventDefault(); }
+  else if (ev.key === 'ArrowLeft') { stop(); animated(big === 1 ? 250 : 0, () => go(Math.max(0, cur - big))); ev.preventDefault(); }
+  else if (ev.key === ' ' && !(t && t.matches('button'))) { play(); ev.preventDefault(); }
+  else if (ev.key === 'PageDown') { $('next-ch').click(); ev.preventDefault(); }
+  else if (ev.key === 'PageUp') { $('prev-ch').click(); ev.preventDefault(); }
+  else if (ev.key === 'Home') { stop(); go(0); } else if (ev.key === 'End') { stop(); go(N - 1); }
+});
+
+/* ---------- map hover & click ---------- */
+const tip = $('tip');
+function showTip(ev, rows) {
+  tip.replaceChildren();
+  for (const r of rows) { if (r[0] === 't') tip.append(h('div', 't', r[1])); else if (r[0] === 'r') { const d = h('div', 'r'); d.append(h('span', null, r[1]), h('span', null, String(r[2]))); tip.append(d); } else tip.append(h('div', null, r[1])); }
+  tip.style.display = 'block';
+  const w = tip.offsetWidth, hh = tip.offsetHeight; let x = ev.clientX + 14, y = ev.clientY + 14;
+  if (x + w > innerWidth - 8) x = ev.clientX - w - 14; if (y + hh > innerHeight - 8) y = ev.clientY - hh - 14;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+function hideTip() { tip.style.display = 'none'; }
+function svgPoint(ev) { const pt = map.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY; return pt.matrixTransform(map.getScreenCTM().inverse()); }
+function distSeg(p, a, b) { const dx = b.x - a.x, dy = b.y - a.y, t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy))); return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy); }
+function pick(p) {
+  let best = null, bd = 9;
+  for (const c of carPos) { const d = Math.hypot(c.x - p.x, c.y - p.y); if (d < bd) { bd = d; best = {kind: 'car', i: c.i}; } }
+  if (best) return best;
+  for (const s of stopEls) if (Math.hypot(s.p.x - p.x, s.p.y - p.y) < 10) return {kind: 'stop', s};
+  for (const f of faultSpots) if (Math.hypot(f.x - p.x, f.y - p.y) < 10) return {kind: 'fault', f};
+  for (const r of hubRects) if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h || Math.hypot(r.p.x - p.x, r.p.y - p.y) < 8) return {kind: 'hub', r};
+  bd = 6; for (let si = 0; si < segs.length; si++) { const g = geo[si], d = distSeg(p, g.at(0, LANE), g.at(g.L, LANE)); if (d < bd) { bd = d; best = {kind: 'road', si}; } }
+  return best;
+}
+map.addEventListener('pointermove', ev => {
+  const p = svgPoint(ev), o = pick(p), k = cur;
+  map.style.cursor = o && o.kind === 'car' ? 'pointer' : 'default';
+  if (!o) return hideTip();
+  if (o.kind === 'car') { const v = D.vehicles[o.i], d = decision(k, o.i), pos = posOf(k, o.i); showTip(ev, [['t', `${v.id} · ${ACT[d[0]].ru.toLowerCase()}`], ['x', `профиль ${v.profile} · ${num(v.mass)} т · → ${d[8]}`], ['x', pos ? `${segs[pos.si].id}, ${S.spd[k][o.i]} км/ч` : 'нет позиции'], ['x', d[3].length ? 'ODD нарушено: ' + d[3].map(x => ODD_CODE_RU[x]).join(', ') : 'ODD: ' + ({C: 'в норме', V: 'нарушено', U: 'нет данных'})[d[2]]], ['x', 'Щелчок — выбрать машину']]); }
+  else if (o.kind === 'road') {
+    const s = segs[o.si], c = S.roads[k][o.si], info = roadInfo(k, o.si), w = condFor(k, o.si), rows = [['t', `${s.id} · ${ROAD[c].ru}`], ['x', `${GROUP_RU[s.group]}, ${geo[o.si].dir}, ${STRUCT_RU[s.structure]}, ${s.lanes} полосы`]];
+    if (info) { rows.push(['r', 'уверенность', num(info[2], 2)]); for (const vt of info[3]) rows.push(['x', `${vt[0]}: ${vt[1] === '-' ? 'без оценки' : ROAD[vt[1]] ? ROAD[vt[1]].ru : vt[1]} — ${vt[3] ? 'вес ' + num(vt[3], 2) : 'не учитывается' + (vt[4] ? ' (' + vt[4] + ')' : '')}`]); }
+    if (w) rows.push(['x', `погода: видимость ${w[0]} м, осадки ${w[1]}, ветер ${num(w[2])} м/с`]);
+    const miss = (S.miss ? S.miss[k] : []).find(m => m[0] === o.si); if (miss) rows.push(['x', `по разметке: ${ROAD[miss[1]].ru}`]);
+    showTip(ev, rows);
+  } else if (o.kind === 'stop') { const st = o.s.st, n = stopLoad(k)[st.id] || 0; showTip(ev, [['t', `${st.id} · площадка безопасной остановки`], ['r', 'занято', `${n} из ${st.capacity}`], ['r', 'масса до', `${num(st.mass, 0)} т`], ['x', `участок ${st.segment}`]]); }
+  else if (o.kind === 'fault') { const src = D.sources[o.f.i]; showTip(ev, [['t', `${src.id} · ${SRC_STATUS[o.f.v.st]}`], ['x', SRC_TYPE_RU[src.type]], ['x', faultsOf(o.f.v.mask).map(x => FAULT_RU[x]).join(', ')], ['r', 'доверие', num(o.f.v.trust, 2)], ['x', `с ${clock(srcSince[k].get(o.f.i))}`]]); }
+  else if (o.kind === 'hub') { const hb = o.r.hub; showTip(ev, [['t', `${hb.id} · ${hb.name}`], ['r', 'вместимость', hb.capacity]]); }
+});
+map.addEventListener('pointerleave', hideTip);
+map.addEventListener('click', ev => { const o = pick(svgPoint(ev)); if (o && o.kind === 'car') { selected = D.vehicles[o.i].id; userPicked = true; render(); } });
+
+/* ---------- main render ---------- */
+function go(k) {
+  cur = k; const a = actOf(k);
+  if (a !== lastAct) { lastAct = a; if (timer && !userPicked) selected = chapters[a].select; }
+  render();
+}
+function render() {
+  const k = cur;
+  renderClock(k); renderKpis(k); renderRoads(k); renderStops(k); renderFaults(k); renderCars(k); renderLabels(k);
+  renderSide(k); renderSources(k); renderQuality(k); renderCarsTable(k); renderFeed(k); movePlayhead(k);
+  chapBtns.forEach((b, i) => b.classList.toggle('on', chapters[i].index === k));
+}
+{ const m = D.meta; document.title = `${m.scenario}${m.title ? ' «' + m.title + '»' : ''} — решения контроллера`;
+  $('h-eyebrow').textContent = `Решения контроллера · ${m.scenario}` + (m.hasLabels ? ' · с эталонной разметкой' : ' · без разметки');
+  $('h-title').textContent = m.title || m.scenario;
+  $('h-sub').textContent = `${cars(NV)} · ${D.segments.length} направлений · ${D.sources.length} источников · ${N} ${plural(N, 'шаг', 'шага', 'шагов')} по ${m.dt} с`;
+  $('cars-title').textContent = `Все машины списком (${NV})`;
+  if (!m.hasLabels) { $('show-miss').closest('label').style.display = 'none'; document.querySelector('.badges').children[1].textContent = 'Разметки нет — только вывод контроллера'; } }
+$('foot').replaceChildren(document.createTextNode('Все решения — ответы solution.py (SHA-256 '), h('code', null, D.meta.solution_sha256.slice(0, 16) + '…'), document.createTextNode(`) на пакеты ${D.meta.scenario}, поданные по одному, как при проверке: ${N} ${plural(N, 'шаг', 'шага', 'шагов')} по ${D.meta.dt} с. Файл data.js собирает tools/generate_demo.py --scenario ${D.meta.scenario}. Позиции машин — из записанной телеметрии: запись сделана заранее и не реагирует на команды контроллера.` + (D.meta.hasLabels ? ' Разметка сценария используется только для событий на таймлайне и сверки.' : '')));
+// Text boxes get the height of their longest possible text, so scrubbing never moves the layout.
+function longest(texts, n = 80) { return [...new Set(texts)].sort((a, b) => b.length - a.length).slice(0, n); }
+function reserve(target, texts) {
+  const probe = target.cloneNode(false); probe.removeAttribute('id');
+  Object.assign(probe.style, {position: 'absolute', visibility: 'hidden', left: '-9999px', top: '0', height: 'auto', minHeight: '0', width: target.clientWidth + 'px'});
+  target.parentNode.append(probe); let hmax = 0;
+  for (const t of texts) { probe.textContent = t; hmax = Math.max(hmax, probe.offsetHeight); }
+  probe.remove(); target.style.height = hmax + 'px';
+}
+function fitText() {}
+let resizeTimer = null;
+addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { drawTimeline(); drawMini(); fitText(); renderHistory(cur, vehIdx[selected]); }, 80); });
+L.regions.querySelectorAll('text').forEach(t => { const b = t.getBBox(); staticRects.push({x: b.x - 2, y: b.y - 1, w: b.width + 4, h: b.height + 2}); });
+drawTimeline(); drawMini(); render(); fitText();
+})();
+</script>
+</body>
+</html>

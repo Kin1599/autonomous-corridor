@@ -1,0 +1,43 @@
+{
+  "tests_passed": 30,
+  "train_scenarios": {
+    "TRAIN-001": {
+      "packets": 360,
+      "safety_proxy": {},
+      "segment_macro_f1": 1.0,
+      "source_macro_f1": 1.0,
+      "odd_macro_f1": 1.0
+    },
+    "TRAIN-002": {
+      "packets": 540,
+      "safety_proxy": {},
+      "segment_macro_f1": 0.9937283923941227,
+      "source_macro_f1": 0.9812919925023558,
+      "odd_macro_f1": 1.0
+    },
+    "TRAIN-003": {
+      "packets": 540,
+      "safety_proxy": {},
+      "segment_macro_f1": 0.9992457709298567,
+      "source_macro_f1": 0.9949100197940621,
+      "odd_macro_f1": 0.9093325794069371
+    },
+    "TRAIN-004": {
+      "packets": 720,
+      "safety_proxy": {},
+      "segment_macro_f1": 0.9557397520180467,
+      "source_macro_f1": 0.9850206937031686,
+      "odd_macro_f1": 0.9986829762365518
+    }
+  },
+  "container_results": {
+    "PUBLIC-101": {
+      "packets": 540,
+      "sha256_uncompressed": "b1fe743dd70b07f470bea2eb18c7ff1cee575f2c8dda98d271583f9d4b1d028f"
+    },
+    "PUBLIC-102": {
+      "packets": 720,
+      "sha256_uncompressed": "1da3abc63b85c5600e094c7f05fe12fee2f8aaddc3b9c11d0ef065258293e096"
+    }
+  }
+}
