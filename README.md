@@ -9,7 +9,7 @@ Team Members:
 1. **Дмитрий Коноплянников** - Backend, DevOps
 2. **Виктория Гайлитис** - Backend
 3. **Дарья Короленко** - Design
-4. **Трофим ** - Frontend
+4. **Трофим Гроголь** - Frontend
 5. **Кирилл Рыжичкин** - ML Engineer
 
 Презентация: [тык](https://disk.yandex.ru/i/heCioDVcvBLfPw)
